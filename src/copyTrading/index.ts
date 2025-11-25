@@ -22,9 +22,6 @@ interface Result {
     error?: string;
 }
 
-/**
- * Start copy trading
- */
 export async function startCopyTrading(userId: string): Promise<Result> {
     try {
         const user = await User.findOne({ userId });
@@ -36,7 +33,6 @@ export async function startCopyTrading(userId: string): Promise<Result> {
             return { success: false, error: 'Copy trading is already active' };
         }
 
-        // Validate settings
         if (!user.copyTradersAddresses || user.copyTradersAddresses.length === 0) {
             return { success: false, error: 'No traders added. Please add trader addresses first' };
         }
@@ -46,7 +42,6 @@ export async function startCopyTrading(userId: string): Promise<Result> {
         const userModel = new UserModel(user);
         await userModel.save();
 
-        // Start monitoring interval
         const interval = setInterval(async () => {
             await monitorTraders(userId);
         }, config.copyTrading.checkInterval);
@@ -61,9 +56,6 @@ export async function startCopyTrading(userId: string): Promise<Result> {
     }
 }
 
-/**
- * Stop copy trading
- */
 export async function stopCopyTrading(userId: string): Promise<Result> {
     try {
         const interval = copyTradingIntervals.get(userId);
@@ -90,14 +82,10 @@ export async function stopCopyTrading(userId: string): Promise<Result> {
     }
 }
 
-/**
- * Monitor traders for new transactions
- */
 async function monitorTraders(userId: string): Promise<void> {
     try {
         const user = await User.findOne({ userId });
         if (!user || !user.copyTraderActive) {
-            // Stop monitoring if user disabled copy trading
             const interval = copyTradingIntervals.get(userId);
             if (interval) {
                 clearInterval(interval);
@@ -112,7 +100,6 @@ async function monitorTraders(userId: string): Promise<void> {
 
         const client = await getClient();
 
-        // Monitor each trader
         for (const traderAddress of user.copyTradersAddresses) {
             await checkAndCopyTrades(client, user, traderAddress);
         }
@@ -121,9 +108,6 @@ async function monitorTraders(userId: string): Promise<void> {
     }
 }
 
-/**
- * Check and copy trades from a trader
- */
 async function checkAndCopyTrades(client: Client, user: IUser, traderAddress: string): Promise<void> {
     try {
         const newTrades = await checkTraderTransactions(
@@ -135,12 +119,10 @@ async function checkAndCopyTrades(client: Client, user: IUser, traderAddress: st
         for (const tradeData of newTrades) {
             const { txHash, tx, meta, tradeInfo } = tradeData;
 
-            // Check if already copied
             if (wasTransactionCopied(user.transactions, txHash)) {
                 continue;
             }
 
-            // Check blacklist
             if (isTokenBlacklisted(
                 user.blackListedTokens,
                 tradeInfo.currency,
@@ -149,13 +131,11 @@ async function checkAndCopyTrades(client: Client, user: IUser, traderAddress: st
                 continue;
             }
 
-            // Calculate copy trade amount
             const tradeAmount = calculateCopyTradeAmount(user, tradeInfo);
             if (!tradeAmount || tradeAmount <= 0) {
                 continue;
             }
 
-            // Execute copy trade
             await executeCopyTrade(client, user, traderAddress, tradeInfo, tradeAmount, txHash);
         }
     } catch (error) {
@@ -163,9 +143,6 @@ async function checkAndCopyTrades(client: Client, user: IUser, traderAddress: st
     }
 }
 
-/**
- * Execute copy trade
- */
 async function executeCopyTrade(
     client: Client,
     user: IUser,
@@ -181,16 +158,13 @@ async function executeCopyTrade(
         if (tradeInfo.type === 'buy') {
             copyResult = await executeCopyBuyTrade(client, wallet, user, tradeInfo, tradeAmount);
         } else if (tradeInfo.type === 'sell') {
-            // For sell, we need to calculate token amount based on user's holdings
-            // This is simplified - in production, you'd check user's token balance
-            const tokenAmount = tradeAmount; // Simplified
+            const tokenAmount = tradeAmount;
             copyResult = await executeCopySellTrade(client, wallet, user, tradeInfo, tokenAmount);
         } else {
             return;
         }
 
         if (copyResult && copyResult.success && copyResult.txHash) {
-            // Record transaction
             user.transactions.push({
                 type: `copy_${tradeInfo.type}`,
                 originalTxHash: originalTxHash,

@@ -4,9 +4,6 @@ import { TradeInfo, CopyTradeData } from '../types';
 
 const processedTransactions = new Set<string>();
 
-/**
- * Check trader transactions for trading activity
- */
 export async function checkTraderTransactions(
     client: Client,
     traderAddress: string,
@@ -37,28 +34,23 @@ export async function checkTraderTransactions(
                 continue;
             }
 
-            // Skip if already processed
             if (processedTransactions.has(txHash)) {
                 continue;
             }
 
-            // Skip if transaction failed
             if (meta?.TransactionResult !== 'tesSUCCESS') {
                 continue;
             }
 
-            // Time filtering
             const txTime = getTransactionTime(txData);
             if (txTime && txTime < oneMinuteAgo) {
                 continue;
             }
 
-            // Skip transactions before copy trading started
             if (startTime && txTime && txTime < startTime) {
                 continue;
             }
 
-            // Detect trading activity
             const tradeInfo = detectTradingActivity(tx, meta, traderAddress);
             if (tradeInfo) {
                 processedTransactions.add(txHash);
@@ -71,7 +63,6 @@ export async function checkTraderTransactions(
             }
         }
 
-        // Clean up old processed transactions
         if (processedTransactions.size > 1000) {
             const oldEntries = Array.from(processedTransactions).slice(0, 500);
             oldEntries.forEach(entry => processedTransactions.delete(entry));
@@ -84,19 +75,14 @@ export async function checkTraderTransactions(
     }
 }
 
-/**
- * Detect trading activity from transaction
- */
 function detectTradingActivity(tx: any, meta: any, traderAddress: string): TradeInfo | null {
     try {
         if (!tx || !meta || tx.Account !== traderAddress) return null;
 
-        // Check for AMM swaps in Payment transactions
         if (tx.TransactionType === 'Payment') {
             return parsePaymentTransaction(tx, meta);
         }
 
-        // Check for consumed offers
         return parseConsumedOffers(tx, meta, traderAddress);
     } catch (error) {
         console.error('Error detecting trading activity:', error);
@@ -104,12 +90,8 @@ function detectTradingActivity(tx: any, meta: any, traderAddress: string): Trade
     }
 }
 
-/**
- * Parse Payment transaction for AMM swaps
- */
 function parsePaymentTransaction(tx: any, meta: any): TradeInfo | null {
     try {
-        // Check if this is an AMM swap
         if (!meta.AffectedNodes) return null;
 
         let xrpAmount = 0;
@@ -118,7 +100,6 @@ function parsePaymentTransaction(tx: any, meta: any): TradeInfo | null {
         let issuer: string | null = null;
         let tradeType: 'buy' | 'sell' | null = null;
 
-        // Look for AMM balance changes
         for (const node of meta.AffectedNodes) {
             const modifiedNode = node.ModifiedNode;
             if (modifiedNode && modifiedNode.LedgerEntryType === 'AMM') {
@@ -126,7 +107,6 @@ function parsePaymentTransaction(tx: any, meta: any): TradeInfo | null {
                 const finalFields = modifiedNode.FinalFields;
 
                 if (prevFields && finalFields) {
-                    // Check for XRP amount change
                     if (prevFields.amount && finalFields.amount) {
                         const prevAmount = typeof prevFields.amount === 'string' 
                             ? parseInt(prevFields.amount) / 1000000 
@@ -138,18 +118,15 @@ function parsePaymentTransaction(tx: any, meta: any): TradeInfo | null {
                         const diff = finalAmount - prevAmount;
                         if (Math.abs(diff) > 0.000001) {
                             if (diff > 0) {
-                                // XRP added to pool (sell)
                                 xrpAmount = Math.abs(diff);
                                 tradeType = 'sell';
                             } else {
-                                // XRP removed from pool (buy)
                                 xrpAmount = Math.abs(diff);
                                 tradeType = 'buy';
                             }
                         }
                     }
 
-                    // Check for token amount change
                     if (prevFields.amount2 && finalFields.amount2) {
                         const prevAmount2 = prevFields.amount2.value || prevFields.amount2;
                         const finalAmount2 = finalFields.amount2.value || finalFields.amount2;
@@ -189,9 +166,6 @@ function parsePaymentTransaction(tx: any, meta: any): TradeInfo | null {
     }
 }
 
-/**
- * Parse consumed offers from transaction metadata
- */
 function parseConsumedOffers(tx: any, meta: any, traderAddress: string): TradeInfo | null {
     try {
         if (!meta.AffectedNodes) return null;
@@ -256,9 +230,6 @@ function parseConsumedOffers(tx: any, meta: any, traderAddress: string): TradeIn
     }
 }
 
-/**
- * Analyze offer to extract trade information
- */
 function analyzeOffer(offer: any): { xrp: number; tokens: number; curr: string | null; iss: string | null; type: 'buy' | 'sell' | null } {
     try {
         const takerGets = offer.TakerGets;
@@ -270,24 +241,22 @@ function analyzeOffer(offer: any): { xrp: number; tokens: number; curr: string |
         let iss: string | null = null;
         let type: 'buy' | 'sell' | null = null;
 
-        // Check if TakerGets is XRP
         if (typeof takerGets === 'string') {
             xrp = parseInt(takerGets) / 1000000;
             if (takerPays && typeof takerPays === 'object') {
                 tokens = parseFloat(takerPays.value || takerPays);
                 curr = takerPays.currency;
                 iss = takerPays.issuer;
-                type = 'sell'; // Selling tokens for XRP
+                type = 'sell';
             }
         }
-        // Check if TakerPays is XRP
         else if (typeof takerPays === 'string') {
             xrp = parseInt(takerPays) / 1000000;
             if (takerGets && typeof takerGets === 'object') {
                 tokens = parseFloat(takerGets.value || takerGets);
                 curr = takerGets.currency;
                 iss = takerGets.issuer;
-                type = 'buy'; // Buying tokens with XRP
+                type = 'buy';
             }
         }
 
@@ -297,9 +266,6 @@ function analyzeOffer(offer: any): { xrp: number; tokens: number; curr: string |
     }
 }
 
-/**
- * Calculate consumed XRP from offer changes
- */
 function calculateConsumedXRP(prevFields: any, finalFields: any): { amount: number; type: 'buy' | 'sell' } | null {
     try {
         const prevTakerGets = prevFields.TakerGets;
@@ -310,14 +276,12 @@ function calculateConsumedXRP(prevFields: any, finalFields: any): { amount: numb
         let consumed = 0;
         let type: 'buy' | 'sell' | null = null;
 
-        // XRP in TakerGets
         if (typeof prevTakerGets === 'string' && typeof finalTakerGets === 'string') {
             const prev = parseInt(prevTakerGets) / 1000000;
             const final = parseInt(finalTakerGets) / 1000000;
             consumed = prev - final;
             type = 'sell';
         }
-        // XRP in TakerPays
         else if (typeof prevTakerPays === 'string' && typeof finalTakerPays === 'string') {
             const prev = parseInt(prevTakerPays) / 1000000;
             const final = parseInt(finalTakerPays) / 1000000;
@@ -331,9 +295,6 @@ function calculateConsumedXRP(prevFields: any, finalFields: any): { amount: numb
     }
 }
 
-/**
- * Calculate consumed tokens from offer changes
- */
 function calculateConsumedTokens(prevFields: any, finalFields: any): { amount: number; currency: string; issuer: string } | null {
     try {
         const prevTakerGets = prevFields.TakerGets;
@@ -345,7 +306,6 @@ function calculateConsumedTokens(prevFields: any, finalFields: any): { amount: n
         let currency: string | null = null;
         let issuer: string | null = null;
 
-        // Token in TakerGets
         if (prevTakerGets && typeof prevTakerGets === 'object' && 
             finalTakerGets && typeof finalTakerGets === 'object') {
             const prev = parseFloat(prevTakerGets.value || prevTakerGets);
@@ -354,7 +314,6 @@ function calculateConsumedTokens(prevFields: any, finalFields: any): { amount: n
             currency = finalTakerGets.currency || prevTakerGets.currency;
             issuer = finalTakerGets.issuer || prevTakerGets.issuer;
         }
-        // Token in TakerPays
         else if (prevTakerPays && typeof prevTakerPays === 'object' && 
                  finalTakerPays && typeof finalTakerPays === 'object') {
             const prev = parseFloat(prevTakerPays.value || prevTakerPays);

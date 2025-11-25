@@ -139,6 +139,14 @@ The bot uses JSON file storage (`data/state.json`) instead of MongoDB. You'll ne
   "selectedSlippage": 4.0,
   "sniperActive": false,
   "copyTraderActive": false,
+  "copyTradersAddresses": [
+    "rTrader1WalletAddressHere",
+    "rTrader2WalletAddressHere"
+  ],
+  "selectedTradingAmountMode": "percentage",
+  "selectedMatchTraderPercentage": 50,
+  "selectedMaxSpendPerTrade": 100,
+  "selectedFixedAmountForCopyTrading": 10,
   "sniperPurchases": [],
   "transactions": [],
   "whiteListedTokens": [],
@@ -159,9 +167,22 @@ Configure sniper settings in your user record:
 
 ### Copy Trading Configuration
 
-Configure copy trading settings in your user record:
+Configure copy trading settings in your user record in `data/state.json`:
 
-- `copyTradersAddresses`: Array of trader wallet addresses to follow
+**Required Settings:**
+- `copyTradersAddresses`: Array of trader wallet addresses to copy (XRPL addresses starting with 'r')
+  ```json
+  "copyTradersAddresses": [
+    "rTrader1WalletAddressHere",
+    "rTrader2WalletAddressHere"
+  ]
+  ```
+
+**Optional Settings:**
+- `selectedTradingAmountMode`: Trading amount calculation mode (`"percentage"`, `"fixed"`, or `"match"`)
+- `selectedMatchTraderPercentage`: Percentage of trader's amount to match (0-100)
+- `selectedMaxSpendPerTrade`: Maximum XRP to spend per copy trade
+- `selectedFixedAmountForCopyTrading`: Fixed XRP amount for each copy trade
 - `selectedTradingAmountMode`: `'fixed'` or `'percentage'`
 - `selectedFixedAmountForCopyTrading`: Fixed XRP amount (if using fixed mode)
 - `selectedMatchTraderPercentage`: Percentage to match (if using percentage mode)

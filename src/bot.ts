@@ -14,18 +14,11 @@ class XRPLTradingBot {
         this.mode = options.mode || 'both';
     }
 
-    /**
-     * Start the bot
-     */
     async start(): Promise<void> {
         try {
-            // Initialize storage
             await db.connect();
-
-            // Connect to XRPL
             await getClient();
 
-            // Start services based on mode
             if (this.mode === 'sniper' || this.mode === 'both') {
                 const sniperResult = await sniper.startSniper(this.userId);
                 if (!sniperResult.success) {
@@ -42,47 +35,35 @@ class XRPLTradingBot {
 
             this.isRunning = true;
 
-            // Handle graceful shutdown
             process.on('SIGINT', () => this.stop());
             process.on('SIGTERM', () => this.stop());
 
         } catch (error) {
-            console.error('❌ Error starting bot:', error);
+            console.error('Error starting bot:', error);
             throw error;
         }
     }
 
-    /**
-     * Stop the bot
-     */
     async stop(): Promise<void> {
         try {
-            // Stop sniper
             if (this.mode === 'sniper' || this.mode === 'both') {
                 await sniper.stopSniper(this.userId);
             }
 
-            // Stop copy trading
             if (this.mode === 'copyTrading' || this.mode === 'both') {
                 await copyTrading.stopCopyTrading(this.userId);
             }
 
-            // Disconnect from XRPL
             await disconnectXRPL();
-
-            // Save state and disconnect
             await db.disconnect();
 
             this.isRunning = false;
         } catch (error) {
-            console.error('❌ Error stopping bot:', error);
+            console.error('Error stopping bot:', error);
             throw error;
         }
     }
 
-    /**
-     * Get bot status
-     */
     getStatus(): BotStatus {
         return {
             isRunning: this.isRunning,

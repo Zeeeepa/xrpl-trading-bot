@@ -1,6 +1,3 @@
-// XRPL AMM Transaction Checker
-// This script connects to XRPL mainnet and checks for AMMCreate transactions
-
 import WebSocket from 'ws';
 
 const testAccount = 'rwpNZgUHJfXP8pjoCps53YM8fW3X1JFU1c';
@@ -42,7 +39,6 @@ export default class XRPLAMMChecker {
     private requestId: number = 1;
     private pendingRequests: Map<number, PendingRequest> = new Map();
 
-    // Connect to XRPL mainnet WebSocket
     connect(serverUrl: string = DEFAULT_XRPL_SERVER): Promise<void> {
         return new Promise((resolve, reject) => {
             this.ws = new WebSocket(serverUrl);
@@ -60,13 +56,10 @@ export default class XRPLAMMChecker {
                 reject(error);
             });
 
-            this.ws.on('close', () => {
-                // Connection closed
-            });
+            this.ws.on('close', () => {});
         });
     }
 
-    // Handle incoming WebSocket messages
     private handleMessage(message: any): void {
         if (message.id && this.pendingRequests.has(message.id)) {
             const { resolve, reject } = this.pendingRequests.get(message.id)!;
@@ -80,7 +73,6 @@ export default class XRPLAMMChecker {
         }
     }
 
-    // Send request to XRPL
     request(command: any): Promise<any> {
         return new Promise((resolve, reject) => {
             if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
@@ -94,17 +86,15 @@ export default class XRPLAMMChecker {
             this.pendingRequests.set(id, { resolve, reject });
             this.ws.send(JSON.stringify(request));
             
-            // Set timeout for requests
             setTimeout(() => {
                 if (this.pendingRequests.has(id)) {
                     this.pendingRequests.delete(id);
                     reject(new Error('Request timeout'));
                 }
-            }, 30000); // 30 second timeout
+            }, 30000);
         });
     }
 
-    // Get account transactions and filter for AMMCreate
     async getAccountAMMTransactions(accountAddress: string, limit: number = 1000): Promise<AMMTransactionResult> {
         try {
             const response = await this.request({
@@ -138,17 +128,14 @@ export default class XRPLAMMChecker {
         }
     }
 
-    // Analyze AMMCreate transaction details
     analyzeAMMCreate(tx: any): AMMAnalysis {
         const txData = tx.tx;
         const meta = tx.meta;
         
-        // Extract token information
         const asset1 = txData.Asset?.currency || 'XRP';
         const asset2 = txData.Asset2?.currency || 'Unknown';
         const asset2Issuer = txData.Asset2?.issuer || 'N/A';
         
-        // Find AMM account from metadata
         let ammAccount = 'Unknown';
         if (meta?.CreatedNode?.NewFields?.AMMAccount) {
             ammAccount = meta.CreatedNode.NewFields.AMMAccount;
@@ -164,13 +151,12 @@ export default class XRPLAMMChecker {
             tradingFee: txData.TradingFee || 0,
             amount1: txData.Amount,
             amount2: txData.Amount2,
-            date: new Date((txData.date + 946684800) * 1000).toISOString(), // Convert XRPL timestamp
+            date: new Date((txData.date + 946684800) * 1000).toISOString(),
             ledgerIndex: txData.ledger_index,
             pairKey: `${asset1}:${asset2}:${asset2Issuer}`
         };
     }
 
-    // Check if this token pair is new (first AMM creation)
     async checkIfNewTokenLaunch(accountAddress: string): Promise<{ isNewCreator: boolean; ammHistory: any[] }> {
         try {
             const result = await this.getAccountAMMTransactions(accountAddress);
@@ -189,7 +175,6 @@ export default class XRPLAMMChecker {
         }
     }
 
-    // Close WebSocket connection
     close(): void {
         if (this.ws) {
             this.ws.close();
@@ -197,14 +182,12 @@ export default class XRPLAMMChecker {
     }
 }
 
-// Test function (only runs when executed directly)
 async function testAMMChecker(): Promise<void> {
     const checker = new XRPLAMMChecker();
     
     try {
         await checker.connect();
         await checker.getAccountAMMTransactions(testAccount);
-        // Test completed silently
     } catch (error) {
         console.error('Test failed:', error instanceof Error ? error.message : 'Unknown error');
     } finally {
@@ -212,7 +195,6 @@ async function testAMMChecker(): Promise<void> {
     }
 }
 
-// Run test if this file is executed directly
 if (require.main === module) {
     testAMMChecker();
 }

@@ -16,9 +16,6 @@ interface Result {
     error?: string;
 }
 
-/**
- * Start the sniper
- */
 export async function startSniper(userId: string): Promise<Result> {
     if (isRunning) {
         return { success: false, error: 'Sniper is already running' };
@@ -30,7 +27,6 @@ export async function startSniper(userId: string): Promise<Result> {
             return { success: false, error: 'User not found' };
         }
 
-        // Validate sniper settings
         if (!user.selectedSniperBuyMode && (!user.whiteListedTokens || user.whiteListedTokens.length === 0)) {
             return { success: false, error: 'No whitelisted tokens for whitelist-only mode' };
         }
@@ -48,7 +44,6 @@ export async function startSniper(userId: string): Promise<Result> {
             };
         }
 
-        // Initialize sniper purchases array if needed
         if (!user.sniperPurchases) {
             user.sniperPurchases = [];
         }
@@ -70,9 +65,6 @@ export async function startSniper(userId: string): Promise<Result> {
     }
 }
 
-/**
- * Stop the sniper
- */
 export async function stopSniper(userId: string): Promise<Result> {
     try {
         if (sniperInterval) {
@@ -95,9 +87,6 @@ export async function stopSniper(userId: string): Promise<Result> {
     }
 }
 
-/**
- * Monitor token markets and execute snipes
- */
 async function monitorTokenMarkets(userId: string): Promise<void> {
     try {
         const user = await User.findOne({ userId });
@@ -113,43 +102,32 @@ async function monitorTokenMarkets(userId: string): Promise<void> {
         const client = await getClient();
         const newTokens = await detectNewTokensFromAMM(client);
 
-        // Process up to MAX_TOKENS_PER_SCAN tokens
         for (let i = 0; i < Math.min(newTokens.length, config.sniper.maxTokensPerScan); i++) {
             const tokenInfo = newTokens[i];
             await evaluateAndSnipeToken(client, user, tokenInfo);
         }
     } catch (error) {
-        console.error('❌ Monitor error:', error instanceof Error ? error.message : 'Unknown error');
+        console.error('Monitor error:', error instanceof Error ? error.message : 'Unknown error');
     }
 }
 
-/**
- * Evaluate and snipe a token
- */
 async function evaluateAndSnipeToken(client: any, user: IUser, tokenInfo: TokenInfo): Promise<void> {
     try {
-        // Evaluate token
         const evaluation = await evaluateToken(client, user, tokenInfo);
 
         if (!evaluation.shouldSnipe) {
             return;
         }
 
-        // Execute snipe
         await executeSnipe(client, user, tokenInfo);
     } catch (error) {
-        console.error(`❌ Error evaluating ${tokenInfo?.readableCurrency || tokenInfo?.currency}:`, error instanceof Error ? error.message : 'Unknown error');
+        console.error(`Error evaluating token:`, error instanceof Error ? error.message : 'Unknown error');
     }
 }
 
-/**
- * Execute snipe transaction
- */
 async function executeSnipe(client: any, user: IUser, tokenInfo: TokenInfo): Promise<void> {
     try {
         const wallet = getWallet();
-        
-        // Get snipe amount
         let snipeAmount: number;
         if (user.selectedSnipeAmount === 'custom') {
             if (!user.selectedCustomSnipeAmount || isNaN(parseFloat(user.selectedCustomSnipeAmount))) {
@@ -171,26 +149,23 @@ async function executeSnipe(client: any, user: IUser, tokenInfo: TokenInfo): Pro
             return;
         }
 
-        // Check balance
         const accountInfo = await client.request({
             command: 'account_info',
             account: wallet.address
         });
 
         const xrpBalance = parseFloat((accountInfo.result as any).account_data.Balance) / 1000000;
-        const totalRequired = snipeAmount + 0.5; // Reserve 0.5 XRP for fees
+        const totalRequired = snipeAmount + 0.5;
 
         if (xrpBalance < totalRequired) {
             console.error(`Insufficient balance: ${xrpBalance} XRP < ${totalRequired} XRP required`);
             return;
         }
 
-        // Check blacklist
         if (isTokenBlacklisted(user.blackListedTokens, tokenInfo.currency, tokenInfo.issuer)) {
             return;
         }
 
-        // Execute buy
         const buyResult = await executeAMMBuy(
             client,
             wallet,
@@ -200,7 +175,6 @@ async function executeSnipe(client: any, user: IUser, tokenInfo: TokenInfo): Pro
         );
 
         if (buyResult.success && buyResult.txHash) {
-            // Record purchase
             if (!user.sniperPurchases) {
                 user.sniperPurchases = [];
             }
@@ -217,7 +191,6 @@ async function executeSnipe(client: any, user: IUser, tokenInfo: TokenInfo): Pro
                 status: 'active'
             });
 
-            // Record transaction
             user.transactions.push({
                 type: 'snipe_buy',
                 ourTxHash: buyResult.txHash,

@@ -5,9 +5,6 @@ import { IUser } from '../database/models';
 import { TokenInfo, EvaluationResult } from '../types';
 import config from '../config';
 
-/**
- * Check if account is a first-time AMM creator
- */
 export async function isFirstTimeAMMCreator(accountAddress: string): Promise<boolean> {
     try {
         const checker = new XRPLAMMChecker();
@@ -18,11 +15,9 @@ export async function isFirstTimeAMMCreator(accountAddress: string): Promise<boo
         
         checker.close();
         
-        // Return true if this is the first AMMCreate transaction (count <= 1)
         return ammCreateCount <= 1;
     } catch (error) {
         console.error('Error checking AMM creator history:', error instanceof Error ? error.message : 'Unknown error');
-        // If we can't check, be conservative and skip
         return false;
     }
 }

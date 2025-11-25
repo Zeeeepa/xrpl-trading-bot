@@ -2,9 +2,6 @@ import { Client } from 'xrpl';
 import { TokenInfo } from '../types';
 import { hexToString } from '../xrpl/utils';
 
-/**
- * Detect new tokens from AMM create transactions
- */
 export async function detectNewTokensFromAMM(client: Client): Promise<TokenInfo[]> {
     try {
         const response = await client.request({
@@ -17,7 +14,6 @@ export async function detectNewTokensFromAMM(client: Client): Promise<TokenInfo[
         const newTokens: TokenInfo[] = [];
         const allTransactions: any[] = [];
 
-        // Check last 4 ledgers
         for (let i = 0; i <= 3; i++) {
             try {
                 const ledgerResponse = i === 0 ? response : await client.request({
@@ -41,7 +37,6 @@ export async function detectNewTokensFromAMM(client: Client): Promise<TokenInfo[
             }
         }
 
-        // Extract AMMCreate transactions
         for (const tx of allTransactions) {
             if (tx.TransactionType === 'AMMCreate' && tx.meta?.TransactionResult === 'tesSUCCESS') {
                 const tokenInfo = extractTokenFromAMMCreate(tx);
@@ -58,9 +53,6 @@ export async function detectNewTokensFromAMM(client: Client): Promise<TokenInfo[
     }
 }
 
-/**
- * Extract token information from AMMCreate transaction
- */
 export function extractTokenFromAMMCreate(tx: any): TokenInfo | null {
     try {
         const { Amount, Amount2 } = tx;
@@ -68,7 +60,7 @@ export function extractTokenFromAMMCreate(tx: any): TokenInfo | null {
         let tokenInfo: any;
 
         if (typeof Amount === 'string') {
-            xrpAmount = parseInt(Amount) / 1000000; // Convert drops to XRP
+            xrpAmount = parseInt(Amount) / 1000000;
             tokenInfo = Amount2;
         } else {
             xrpAmount = parseInt(Amount2) / 1000000;
