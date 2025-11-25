@@ -34,7 +34,22 @@ const config: Config = {
     // Copy Trading Configuration
     copyTrading: {
         checkInterval: parseInt(process.env.COPY_TRADING_CHECK_INTERVAL || '3000') || 3000,
-        maxTransactionsToCheck: parseInt(process.env.MAX_TRANSACTIONS_TO_CHECK || '20') || 20
+        maxTransactionsToCheck: parseInt(process.env.MAX_TRANSACTIONS_TO_CHECK || '20') || 20,
+        traderAddresses: process.env.COPY_TRADER_ADDRESSES ? process.env.COPY_TRADER_ADDRESSES.split(',').map(addr => addr.trim()) : [],
+        tradingAmountMode: process.env.COPY_TRADING_AMOUNT_MODE || 'percentage',
+        matchTraderPercentage: parseFloat(process.env.COPY_TRADING_MATCH_PERCENTAGE || '50') || 50,
+        maxSpendPerTrade: parseFloat(process.env.COPY_TRADING_MAX_SPEND || '100') || 100,
+        fixedAmount: parseFloat(process.env.COPY_TRADING_FIXED_AMOUNT || '10') || 10
+    },
+
+    // Sniper User Configuration
+    sniperUser: {
+        buyMode: process.env.SNIPER_BUY_MODE === 'true' || process.env.SNIPER_BUY_MODE === '1',
+        snipeAmount: process.env.SNIPER_AMOUNT || '1',
+        customSnipeAmount: process.env.SNIPER_CUSTOM_AMOUNT || '',
+        minimumPoolLiquidity: parseFloat(process.env.SNIPER_MIN_LIQUIDITY || '100') || 100,
+        riskScore: process.env.SNIPER_RISK_SCORE || 'medium',
+        transactionDivides: parseInt(process.env.SNIPER_TRANSACTION_DIVIDES || '1') || 1
     },
 
     // Wallet Configuration

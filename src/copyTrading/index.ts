@@ -33,8 +33,8 @@ export async function startCopyTrading(userId: string): Promise<Result> {
             return { success: false, error: 'Copy trading is already active' };
         }
 
-        if (!user.copyTradersAddresses || user.copyTradersAddresses.length === 0) {
-            return { success: false, error: 'No traders added. Please add trader addresses first' };
+        if (!config.copyTrading.traderAddresses || config.copyTrading.traderAddresses.length === 0) {
+            return { success: false, error: 'No traders added. Please set COPY_TRADER_ADDRESSES in .env' };
         }
 
         user.copyTraderActive = true;
@@ -94,13 +94,13 @@ async function monitorTraders(userId: string): Promise<void> {
             return;
         }
 
-        if (!user.copyTradersAddresses || user.copyTradersAddresses.length === 0) {
+        if (!config.copyTrading.traderAddresses || config.copyTrading.traderAddresses.length === 0) {
             return;
         }
 
         const client = await getClient();
 
-        for (const traderAddress of user.copyTradersAddresses) {
+        for (const traderAddress of config.copyTrading.traderAddresses) {
             await checkAndCopyTrades(client, user, traderAddress);
         }
     } catch (error) {
@@ -117,7 +117,7 @@ async function checkAndCopyTrades(client: Client, user: IUser, traderAddress: st
         );
 
         for (const tradeData of newTrades) {
-            const { txHash, tx, meta, tradeInfo } = tradeData;
+            const { txHash, tradeInfo } = tradeData;
 
             if (wasTransactionCopied(user.transactions, txHash)) {
                 continue;

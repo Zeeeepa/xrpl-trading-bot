@@ -90,7 +90,7 @@ function detectTradingActivity(tx: any, meta: any, traderAddress: string): Trade
     }
 }
 
-function parsePaymentTransaction(tx: any, meta: any): TradeInfo | null {
+function parsePaymentTransaction(_tx: any, meta: any): TradeInfo | null {
     try {
         if (!meta.AffectedNodes) return null;
 
@@ -166,7 +166,7 @@ function parsePaymentTransaction(tx: any, meta: any): TradeInfo | null {
     }
 }
 
-function parseConsumedOffers(tx: any, meta: any, traderAddress: string): TradeInfo | null {
+function parseConsumedOffers(_tx: any, meta: any, _traderAddress: string): TradeInfo | null {
     try {
         if (!meta.AffectedNodes) return null;
 

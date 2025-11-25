@@ -15,34 +15,28 @@ interface CopyTradeResult {
     error?: string;
 }
 
-/**
- * Calculate copy trade amount based on user settings
- */
-export function calculateCopyTradeAmount(user: IUser, tradeInfo: TradeInfo): number {
+export function calculateCopyTradeAmount(_user: IUser, tradeInfo: TradeInfo): number {
     try {
-        const mode = user.selectedTradingAmountMode;
+        const mode = config.copyTrading.tradingAmountMode;
 
         if (mode === 'fixed') {
-            const fixedAmount = user.selectedFixedAmountForCopyTrading || 1;
-            return fixedAmount;
+            return config.copyTrading.fixedAmount;
         }
 
         if (mode === 'percentage') {
-            const percentage = user.selectedMatchTraderPercentage || 10;
+            const percentage = config.copyTrading.matchTraderPercentage;
             const traderAmount = tradeInfo.xrpAmount || 0;
             const calculatedAmount = (traderAmount * percentage) / 100;
 
-            // Apply max spend limit if set
-            const maxSpend = user.selectedMaxSpendPerTrade;
-            if (maxSpend && calculatedAmount > maxSpend) {
+            const maxSpend = config.copyTrading.maxSpendPerTrade;
+            if (calculatedAmount > maxSpend) {
                 return maxSpend;
             }
 
             return calculatedAmount;
         }
 
-        // Default: use fixed amount or 10% of trader's amount
-        const defaultAmount = user.selectedFixedAmountForCopyTrading || 
+        const defaultAmount = config.copyTrading.fixedAmount || 
                              ((tradeInfo.xrpAmount || 0) * 0.1);
         return defaultAmount;
     } catch (error) {
@@ -57,7 +51,7 @@ export function calculateCopyTradeAmount(user: IUser, tradeInfo: TradeInfo): num
 export async function executeCopyBuyTrade(
     client: Client,
     wallet: Wallet,
-    user: IUser,
+    _user: IUser,
     tradeInfo: TradeInfo,
     xrpAmount: number
 ): Promise<CopyTradeResult> {
@@ -73,7 +67,7 @@ export async function executeCopyBuyTrade(
             wallet,
             tokenInfo,
             xrpAmount,
-            user.selectedSlippage || config.trading.defaultSlippage
+            config.trading.defaultSlippage
         );
 
         if (buyResult.success) {
@@ -106,7 +100,7 @@ export async function executeCopyBuyTrade(
 export async function executeCopySellTrade(
     client: Client,
     wallet: Wallet,
-    user: IUser,
+    _user: IUser,
     tradeInfo: TradeInfo,
     tokenAmount: number
 ): Promise<CopyTradeResult> {
@@ -122,7 +116,7 @@ export async function executeCopySellTrade(
             wallet,
             tokenInfo,
             tokenAmount,
-            user.selectedSlippage || config.trading.defaultSlippage
+            config.trading.defaultSlippage
         );
 
         if (sellResult.success) {

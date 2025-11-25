@@ -48,7 +48,7 @@ export async function evaluateToken(
     }
 
     // Whitelist check (if whitelist-only mode)
-    if (user.selectedSniperBuyMode === false) {
+    if (!config.sniperUser.buyMode) {
         const isWhitelisted = user.whiteListedTokens?.some(token =>
             token.currency === tokenInfo.currency && token.issuer === tokenInfo.issuer
         );
@@ -60,8 +60,8 @@ export async function evaluateToken(
     }
 
     // Rugcheck (if auto-buy mode)
-    if (user.selectedSniperBuyMode === true) {
-        const minLiquidity = user.selectedMinimumPoolLiquidity || 100;
+    if (config.sniperUser.buyMode) {
+        const minLiquidity = config.sniperUser.minimumPoolLiquidity;
         
         if (tokenInfo.initialLiquidity === null) {
             // Accept tokens with null initial liquidity

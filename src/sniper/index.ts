@@ -27,14 +27,14 @@ export async function startSniper(userId: string): Promise<Result> {
             return { success: false, error: 'User not found' };
         }
 
-        if (!user.selectedSniperBuyMode && (!user.whiteListedTokens || user.whiteListedTokens.length === 0)) {
+        if (!config.sniperUser.buyMode && (!user.whiteListedTokens || user.whiteListedTokens.length === 0)) {
             return { success: false, error: 'No whitelisted tokens for whitelist-only mode' };
         }
 
         const snipeAmount = parseFloat(
-            user.selectedSnipeAmount === 'custom' 
-                ? (user.selectedCustomSnipeAmount || '1')
-                : (user.selectedSnipeAmount || '1')
+            config.sniperUser.snipeAmount === 'custom' 
+                ? (config.sniperUser.customSnipeAmount || '1')
+                : (config.sniperUser.snipeAmount || '1')
         ) || 1;
 
         if (snipeAmount > config.trading.maxSnipeAmount) {
@@ -129,14 +129,14 @@ async function executeSnipe(client: any, user: IUser, tokenInfo: TokenInfo): Pro
     try {
         const wallet = getWallet();
         let snipeAmount: number;
-        if (user.selectedSnipeAmount === 'custom') {
-            if (!user.selectedCustomSnipeAmount || isNaN(parseFloat(user.selectedCustomSnipeAmount))) {
+        if (config.sniperUser.snipeAmount === 'custom') {
+            if (!config.sniperUser.customSnipeAmount || isNaN(parseFloat(config.sniperUser.customSnipeAmount))) {
                 console.error('Invalid custom snipe amount');
                 return;
             }
-            snipeAmount = parseFloat(user.selectedCustomSnipeAmount);
+            snipeAmount = parseFloat(config.sniperUser.customSnipeAmount);
         } else {
-            snipeAmount = parseFloat(user.selectedSnipeAmount || '1') || 1;
+            snipeAmount = parseFloat(config.sniperUser.snipeAmount || '1') || 1;
         }
 
         if (isNaN(snipeAmount) || snipeAmount <= 0) {
@@ -171,7 +171,7 @@ async function executeSnipe(client: any, user: IUser, tokenInfo: TokenInfo): Pro
             wallet,
             tokenInfo,
             snipeAmount,
-            user.selectedSlippage || config.trading.defaultSlippage
+            config.trading.defaultSlippage
         );
 
         if (buyResult.success && buyResult.txHash) {

@@ -70,6 +70,21 @@ xrpl-trading-bot/
    DEFAULT_SLIPPAGE=4.0
    SNIPER_CHECK_INTERVAL=8000
    COPY_TRADING_CHECK_INTERVAL=3000
+
+   # Sniper Configuration (Optional)
+   SNIPER_BUY_MODE=true
+   SNIPER_AMOUNT=1
+   SNIPER_CUSTOM_AMOUNT=
+   SNIPER_MIN_LIQUIDITY=100
+   SNIPER_RISK_SCORE=medium
+   SNIPER_TRANSACTION_DIVIDES=1
+
+   # Copy Trading Configuration (Optional)
+   COPY_TRADER_ADDRESSES=rTrader1Address,rTrader2Address
+   COPY_TRADING_AMOUNT_MODE=percentage
+   COPY_TRADING_MATCH_PERCENTAGE=50
+   COPY_TRADING_MAX_SPEND=100
+   COPY_TRADING_FIXED_AMOUNT=10
    ```
 
 ## 🎯 Usage
@@ -99,6 +114,8 @@ npm run start:sniper
 node dist/index.js --sniper
 ```
 
+**Note:** Use `npm run` for custom scripts. The `start` script can be run with just `npm start`, but other scripts require `npm run`.
+
 ### Start Only Copy Trading
 ```bash
 npm run start:copy
@@ -117,77 +134,44 @@ Before running the bot, you need to:
 
 1. **Configure Wallet**: Set `WALLET_SEED` and `WALLET_ADDRESS` in `.env`
 2. **Fund Wallet**: Ensure your wallet has sufficient XRP for trading and fees
-3. **Create User**: The bot uses in-memory state with JSON file persistence. 
-   - User data is automatically stored in `data/state.json`
-   - The file is created automatically on first run
-   - You can manually edit `data/state.json` to configure user settings
+3. **Configuration**: All configuration is done via `.env` file. The `data/state.json` file is only used for runtime state (transactions, purchases, balances).
 
 ## ⚙️ Configuration
 
-### User Setup
+### Configuration via .env
 
-The bot uses JSON file storage (`data/state.json`) instead of MongoDB. You'll need to create a user record manually or use a helper script.
-
-**User Configuration Structure:**
-```json
-{
-  "userId": "your-user-id",
-  "walletAddress": "rYourWalletAddress...",
-  "seed": "sYourSecretSeed...",
-  "publicKey": "...",
-  "privateKey": "...",
-  "selectedSlippage": 4.0,
-  "sniperActive": false,
-  "copyTraderActive": false,
-  "copyTradersAddresses": [
-    "rTrader1WalletAddressHere",
-    "rTrader2WalletAddressHere"
-  ],
-  "selectedTradingAmountMode": "percentage",
-  "selectedMatchTraderPercentage": 50,
-  "selectedMaxSpendPerTrade": 100,
-  "selectedFixedAmountForCopyTrading": 10,
-  "sniperPurchases": [],
-  "transactions": [],
-  "whiteListedTokens": [],
-  "blackListedTokens": []
-}
-```
+All configuration is done through the `.env` file. The `data/state.json` file is automatically created and only stores runtime state (transactions, purchases, balances).
 
 ### Sniper Configuration
 
-Configure sniper settings in your user record:
+Configure sniper settings in `.env`:
 
-- `selectedSniperBuyMode`: `true` for auto-buy with rugcheck, `false` for whitelist-only
-- `selectedSnipeAmount`: Amount in XRP (or 'custom')
-- `selectedCustomSnipeAmount`: Custom amount if using 'custom' mode
-- `selectedMinimumPoolLiquidity`: Minimum liquidity required (rugcheck)
-- `whiteListedTokens`: Array of whitelisted tokens (for whitelist mode)
-- `blackListedTokens`: Array of blacklisted tokens
+- `SNIPER_BUY_MODE`: `true` for auto-buy mode, `false` for whitelist-only
+- `SNIPER_AMOUNT`: Amount to snipe (e.g., '1', '5', '10', 'custom')
+- `SNIPER_CUSTOM_AMOUNT`: Custom snipe amount if using 'custom' mode
+- `SNIPER_MIN_LIQUIDITY`: Minimum liquidity required (XRP)
+- `SNIPER_RISK_SCORE`: Risk tolerance ('low', 'medium', 'high')
+- `SNIPER_TRANSACTION_DIVIDES`: Number of transactions to divide snipe into
+
+**Note:** Whitelist and blacklist tokens are still configured in `data/state.json` as they are runtime data.
 
 ### Copy Trading Configuration
 
-Configure copy trading settings in your user record in `data/state.json`:
+Configure copy trading settings in `.env`:
 
 **Required Settings:**
-- `copyTradersAddresses`: Array of trader wallet addresses to copy (XRPL addresses starting with 'r')
-  ```json
-  "copyTradersAddresses": [
-    "rTrader1WalletAddressHere",
-    "rTrader2WalletAddressHere"
-  ]
+- `COPY_TRADER_ADDRESSES`: Comma-separated list of trader wallet addresses to copy
+  ```env
+  COPY_TRADER_ADDRESSES=rTrader1Address,rTrader2Address
   ```
 
 **Optional Settings:**
-- `selectedTradingAmountMode`: Trading amount calculation mode (`"percentage"`, `"fixed"`, or `"match"`)
-- `selectedMatchTraderPercentage`: Percentage of trader's amount to match (0-100)
-- `selectedMaxSpendPerTrade`: Maximum XRP to spend per copy trade
-- `selectedFixedAmountForCopyTrading`: Fixed XRP amount for each copy trade
-- `selectedTradingAmountMode`: `'fixed'` or `'percentage'`
-- `selectedFixedAmountForCopyTrading`: Fixed XRP amount (if using fixed mode)
-- `selectedMatchTraderPercentage`: Percentage to match (if using percentage mode)
-- `selectedMaxSpendPerTrade`: Maximum XRP per trade
-- `selectedSlippage`: Slippage tolerance percentage
+- `COPY_TRADING_AMOUNT_MODE`: Trading amount calculation mode (`percentage`, `fixed`, or `match`)
+- `COPY_TRADING_MATCH_PERCENTAGE`: Percentage of trader's amount to match (0-100)
+- `COPY_TRADING_MAX_SPEND`: Maximum XRP to spend per copy trade
+- `COPY_TRADING_FIXED_AMOUNT`: Fixed XRP amount for each copy trade
+
+**Note:** All configuration is now in `.env`. The `data/state.json` file only stores runtime state (transactions, purchases, balances, active flags).
 
 ## 🔧 Module Overview
 

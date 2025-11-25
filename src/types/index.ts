@@ -22,6 +22,19 @@ export interface Config {
     copyTrading: {
         checkInterval: number;
         maxTransactionsToCheck: number;
+        traderAddresses: string[];
+        tradingAmountMode: string;
+        matchTraderPercentage: number;
+        maxSpendPerTrade: number;
+        fixedAmount: number;
+    };
+    sniperUser: {
+        buyMode: boolean;
+        snipeAmount: string;
+        customSnipeAmount: string;
+        minimumPoolLiquidity: number;
+        riskScore: string;
+        transactionDivides: number;
     };
     wallet: {
         seed: string;
