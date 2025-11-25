@@ -16,16 +16,21 @@ A modular, high-performance XRPL trading bot with sniper and copy trading capabi
 xrpl-trading-bot/
 ├── src/
 │   ├── config/          # Configuration management
-│   ├── database/        # Database models and connection
-│   ├── xrpl/            # XRPL client, wallet, and AMM utilities
-│   ├── sniper/          # Token sniping module
-│   ├── copyTrading/     # Copy trading module
-│   └── bot.js           # Main bot orchestrator
-├── index.js             # Entry point
-├── filterAmmCreate.js   # AMM transaction checker utility
+│   ├── database/         # Database models and connection
+│   ├── xrpl/             # XRPL client, wallet, and AMM utilities
+│   ├── sniper/           # Token sniping module
+│   ├── copyTrading/      # Copy trading module
+│   ├── types/            # TypeScript type definitions
+│   └── bot.ts            # Main bot orchestrator
+├── dist/                 # Compiled JavaScript (after build)
+├── index.ts              # Entry point (TypeScript)
+├── filterAmmCreate.js    # AMM transaction checker utility
+├── tsconfig.json          # TypeScript configuration
 ├── package.json
-└── .env                 # Environment configuration
+└── .env                  # Environment configuration
 ```
+
+**Note**: This project is written in TypeScript and compiles to JavaScript in the `dist/` folder.
 
 ## 🛠️ Installation
 
@@ -40,7 +45,12 @@ xrpl-trading-bot/
    npm install
    ```
 
-3. **Configure environment variables**
+3. **Build TypeScript** (required before running)
+   ```bash
+   npm run build
+   ```
+
+4. **Configure environment variables**
    Create a `.env` file:
    ```env
    # XRPL Configuration
@@ -51,8 +61,8 @@ xrpl-trading-bot/
    WALLET_SEED=your_wallet_seed_here
    WALLET_ADDRESS=your_wallet_address_here
 
-   # MongoDB Configuration (REQUIRED)
-   MONGODB_URI=mongodb://localhost:27017/xrpl-bot
+   # Storage Configuration (Optional)
+   DATA_FILE=./data/state.json
 
    # Trading Configuration (Optional)
    MIN_LIQUIDITY=100
@@ -64,45 +74,81 @@ xrpl-trading-bot/
 
 ## 🎯 Usage
 
-### Start Both Sniper and Copy Trading
+### Development (with TypeScript)
 ```bash
+npm run dev
+# or with auto-reload
+npm run dev:watch
+```
+
+### Production (compiled JavaScript)
+```bash
+# Build first
+npm run build
+
+# Then start
 npm start
 # or
-node index.js
+node dist/index.js
 ```
 
 ### Start Only Sniper
 ```bash
 npm run start:sniper
 # or
-node index.js --sniper
+node dist/index.js --sniper
 ```
 
 ### Start Only Copy Trading
 ```bash
 npm run start:copy
 # or
-node index.js --copy
+node dist/index.js --copy
 ```
 
 ### Start with Custom User ID
 ```bash
-node index.js --user=my-user-id
+node dist/index.js --user=my-user-id
 ```
 
 ## 📋 Prerequisites
 
 Before running the bot, you need to:
 
-1. **Set up MongoDB**: The bot requires MongoDB to store user data and trading history
-2. **Configure Wallet**: Set `WALLET_SEED` and `WALLET_ADDRESS` in `.env`
-3. **Fund Wallet**: Ensure your wallet has sufficient XRP for trading and fees
+1. **Configure Wallet**: Set `WALLET_SEED` and `WALLET_ADDRESS` in `.env`
+2. **Fund Wallet**: Ensure your wallet has sufficient XRP for trading and fees
+3. **Create User**: The bot uses in-memory state with JSON file persistence. 
+   - User data is automatically stored in `data/state.json`
+   - The file is created automatically on first run
+   - You can manually edit `data/state.json` to configure user settings
 
 ## ⚙️ Configuration
 
+### User Setup
+
+The bot uses JSON file storage (`data/state.json`) instead of MongoDB. You'll need to create a user record manually or use a helper script.
+
+**User Configuration Structure:**
+```json
+{
+  "userId": "your-user-id",
+  "walletAddress": "rYourWalletAddress...",
+  "seed": "sYourSecretSeed...",
+  "publicKey": "...",
+  "privateKey": "...",
+  "selectedSlippage": 4.0,
+  "sniperActive": false,
+  "copyTraderActive": false,
+  "sniperPurchases": [],
+  "transactions": [],
+  "whiteListedTokens": [],
+  "blackListedTokens": []
+}
+```
+
 ### Sniper Configuration
 
-Configure sniper settings in your user database record:
+Configure sniper settings in your user record:
 
 - `selectedSniperBuyMode`: `true` for auto-buy with rugcheck, `false` for whitelist-only
 - `selectedSnipeAmount`: Amount in XRP (or 'custom')
@@ -113,7 +159,7 @@ Configure sniper settings in your user database record:
 
 ### Copy Trading Configuration
 
-Configure copy trading settings in your user database record:
+Configure copy trading settings in your user record:
 
 - `copyTradersAddresses`: Array of trader wallet addresses to follow
 - `selectedTradingAmountMode`: `'fixed'` or `'percentage'`
@@ -167,13 +213,16 @@ The bot logs all activities to the console:
 
 ## 🔄 Migration from v1.0
 
-If you're migrating from the Telegram bot version, see `MIGRATION.md` for detailed instructions.
+If you're migrating from the Telegram bot version:
 
 Key changes:
 - Removed all Telegram dependencies
+- Removed MongoDB dependency (now uses JSON file storage)
 - Modular architecture (was 9900+ lines in one file)
 - Runs as standalone process instead of Telegram bot
-- MongoDB schema remains compatible
+- State is stored in `data/state.json` instead of MongoDB
+
+**Note**: If you have existing MongoDB data, you'll need to export it and convert to the JSON format. See `data/state.json.example` for the structure.
 
 ## 📝 License
 
@@ -186,5 +235,9 @@ Contributions are welcome! Please ensure your code follows the existing modular 
 ---
 
 **⚠️ Disclaimer**: This bot is for educational purposes. Use at your own risk. The developers are not responsible for any financial losses.
+
+## 📞 Contact
+
+For support or questions, reach out on Telegram: [@trum3it](https://t.me/trum3it)
 
 **⭐ Star**: this repository if you find it useful!

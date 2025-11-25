@@ -1,14 +1,17 @@
-const XRPLAMMChecker = require('../../filterAmmCreate');
-const { checkLPBurnStatus } = require('../xrpl/amm');
-const { getReadableCurrency } = require('../xrpl/utils');
+import { Client } from 'xrpl';
+import XRPLAMMChecker from '../../filterAmmCreate';
+import { checkLPBurnStatus } from '../xrpl/amm';
+import { IUser } from '../database/models';
+import { TokenInfo, EvaluationResult } from '../types';
+import config from '../config';
 
 /**
  * Check if account is a first-time AMM creator
  */
-async function isFirstTimeAMMCreator(accountAddress) {
+export async function isFirstTimeAMMCreator(accountAddress: string): Promise<boolean> {
     try {
         const checker = new XRPLAMMChecker();
-        await checker.connect();
+        await checker.connect(config.xrpl.server);
         
         const result = await checker.getAccountAMMTransactions(accountAddress);
         const ammCreateCount = result.ammCreateTransactions.length;
@@ -18,7 +21,7 @@ async function isFirstTimeAMMCreator(accountAddress) {
         // Return true if this is the first AMMCreate transaction (count <= 1)
         return ammCreateCount <= 1;
     } catch (error) {
-        console.error('Error checking AMM creator history:', error.message);
+        console.error('Error checking AMM creator history:', error instanceof Error ? error.message : 'Unknown error');
         // If we can't check, be conservative and skip
         return false;
     }
@@ -27,8 +30,12 @@ async function isFirstTimeAMMCreator(accountAddress) {
 /**
  * Evaluate token for sniping based on user criteria
  */
-async function evaluateToken(client, user, tokenInfo) {
-    const evaluation = {
+export async function evaluateToken(
+    client: Client,
+    user: IUser,
+    tokenInfo: TokenInfo
+): Promise<EvaluationResult> {
+    const evaluation: EvaluationResult = {
         shouldSnipe: false,
         reasons: []
     };
@@ -64,7 +71,7 @@ async function evaluateToken(client, user, tokenInfo) {
         if (tokenInfo.initialLiquidity === null) {
             // Accept tokens with null initial liquidity
             evaluation.reasons.push('Null initial liquidity accepted');
-        } else if (tokenInfo.initialLiquidity < minLiquidity) {
+        } else if (tokenInfo.initialLiquidity !== undefined && tokenInfo.initialLiquidity < minLiquidity) {
             evaluation.reasons.push(`Insufficient liquidity: ${tokenInfo.initialLiquidity} XRP < ${minLiquidity} XRP`);
             return evaluation;
         } else {
@@ -73,6 +80,11 @@ async function evaluateToken(client, user, tokenInfo) {
     }
 
     // First-time creator check
+    if (!tokenInfo.account) {
+        evaluation.reasons.push('No account information');
+        return evaluation;
+    }
+
     const isFirstTime = await isFirstTimeAMMCreator(tokenInfo.account);
     if (!isFirstTime) {
         evaluation.reasons.push('Not a first-time AMM creator');
@@ -96,7 +108,11 @@ async function evaluateToken(client, user, tokenInfo) {
 /**
  * Check if token is blacklisted
  */
-function isTokenBlacklisted(blackListedTokens, currency, issuer) {
+export function isTokenBlacklisted(
+    blackListedTokens: any[] | undefined,
+    currency: string,
+    issuer: string
+): boolean {
     if (!blackListedTokens || blackListedTokens.length === 0) {
         return false;
     }
@@ -105,10 +121,4 @@ function isTokenBlacklisted(blackListedTokens, currency, issuer) {
         token.currency === currency && token.issuer === issuer
     );
 }
-
-module.exports = {
-    isFirstTimeAMMCreator,
-    evaluateToken,
-    isTokenBlacklisted
-};
 

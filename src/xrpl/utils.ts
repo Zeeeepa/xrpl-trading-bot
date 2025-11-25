@@ -1,4 +1,4 @@
-function getReadableCurrency(currency) {
+export function getReadableCurrency(currency: string): string {
     if (!currency) return 'UNKNOWN';
     if (currency.length <= 3) {
         return currency;
@@ -19,7 +19,7 @@ function getReadableCurrency(currency) {
     return currency;
 }
 
-function hexToString(hex) {
+export function hexToString(hex: string): string {
     if (!hex || hex === 'XRP') return hex;
     if (hex.length !== 40) return hex;
     
@@ -36,21 +36,21 @@ function hexToString(hex) {
     }
 }
 
-function formatTokenAmountSimple(amount) {
+export function formatTokenAmountSimple(amount: number | string): string {
     if (typeof amount === 'string') {
         return amount;
     }
     return amount.toFixed(6);
 }
 
-function convertCurrencyToXRPLFormat(currency) {
+export function convertCurrencyToXRPLFormat(currency: string): string {
     if (currency.length <= 3) {
         return currency.padEnd(3, '\0');
     }
     return currency.padEnd(40, '\0').slice(0, 40);
 }
 
-function convertXRPLCurrencyToReadable(xrplCurrency) {
+export function convertXRPLCurrencyToReadable(xrplCurrency: string): string {
     if (!xrplCurrency) return '';
     if (xrplCurrency.length <= 3) {
         return xrplCurrency.trim();
@@ -71,7 +71,7 @@ function convertXRPLCurrencyToReadable(xrplCurrency) {
     return xrplCurrency;
 }
 
-function getTransactionTime(txData) {
+export function getTransactionTime(txData: any): Date | null {
     try {
         if (txData.tx?.date) {
             return new Date((txData.tx.date + 946684800) * 1000);
@@ -84,13 +84,4 @@ function getTransactionTime(txData) {
         return null;
     }
 }
-
-module.exports = {
-    getReadableCurrency,
-    hexToString,
-    formatTokenAmountSimple,
-    convertCurrencyToXRPLFormat,
-    convertXRPLCurrencyToReadable,
-    getTransactionTime
-};
 

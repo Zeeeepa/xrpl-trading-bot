@@ -1,9 +1,11 @@
-const { hexToString } = require('../xrpl/utils');
+import { Client } from 'xrpl';
+import { TokenInfo } from '../types';
+import { hexToString } from '../xrpl/utils';
 
 /**
  * Detect new tokens from AMM create transactions
  */
-async function detectNewTokensFromAMM(client) {
+export async function detectNewTokensFromAMM(client: Client): Promise<TokenInfo[]> {
     try {
         const response = await client.request({
             command: 'ledger',
@@ -12,23 +14,23 @@ async function detectNewTokensFromAMM(client) {
             expand: true
         });
 
-        const newTokens = [];
-        const allTransactions = [];
+        const newTokens: TokenInfo[] = [];
+        const allTransactions: any[] = [];
 
         // Check last 4 ledgers
         for (let i = 0; i <= 3; i++) {
             try {
                 const ledgerResponse = i === 0 ? response : await client.request({
                     command: 'ledger',
-                    ledger_index: response.result.ledger.ledger_index - i,
+                    ledger_index: (response.result as any).ledger.ledger_index - i,
                     transactions: true,
                     expand: true
                 });
                 
-                const txWrappers = ledgerResponse.result.ledger.transactions || [];
+                const txWrappers = (ledgerResponse.result as any).ledger.transactions || [];
                 const txs = txWrappers
-                    .filter(wrapper => wrapper.tx_json && wrapper.meta)
-                    .map(wrapper => ({
+                    .filter((wrapper: any) => wrapper.tx_json && wrapper.meta)
+                    .map((wrapper: any) => ({
                         ...wrapper.tx_json,
                         meta: wrapper.meta
                     }));
@@ -59,10 +61,11 @@ async function detectNewTokensFromAMM(client) {
 /**
  * Extract token information from AMMCreate transaction
  */
-function extractTokenFromAMMCreate(tx) {
+export function extractTokenFromAMMCreate(tx: any): TokenInfo | null {
     try {
         const { Amount, Amount2 } = tx;
-        let xrpAmount, tokenInfo;
+        let xrpAmount: number;
+        let tokenInfo: any;
 
         if (typeof Amount === 'string') {
             xrpAmount = parseInt(Amount) / 1000000; // Convert drops to XRP
@@ -89,9 +92,4 @@ function extractTokenFromAMMCreate(tx) {
         return null;
     }
 }
-
-module.exports = {
-    detectNewTokensFromAMM,
-    extractTokenFromAMMCreate
-};
 

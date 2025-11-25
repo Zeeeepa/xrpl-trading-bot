@@ -6,8 +6,8 @@
  * A modular trading bot for XRPL with sniper and copy trading capabilities
  */
 
-const XRPLTradingBot = require('./src/bot');
-const config = require('./src/config');
+import XRPLTradingBot from './src/bot';
+import { BotOptions } from './src/types';
 
 // Parse command line arguments
 const args = process.argv.slice(2);
@@ -39,3 +39,4 @@ process.on('unhandledRejection', (reason, promise) => {
     console.error('❌ Unhandled Rejection at:', promise, 'reason:', reason);
     bot.stop().finally(() => process.exit(1));
 });
+

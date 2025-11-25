@@ -1,26 +1,29 @@
-const db = require('./database/db');
-const { getClient, disconnect: disconnectXRPL } = require('./xrpl/client');
-const sniper = require('./sniper');
-const copyTrading = require('./copyTrading');
-const config = require('./config');
+import * as db from './database/db';
+import { getClient, disconnect as disconnectXRPL } from './xrpl/client';
+import * as sniper from './sniper';
+import * as copyTrading from './copyTrading';
+import { BotOptions, BotStatus } from './types';
 
 class XRPLTradingBot {
-    constructor(options = {}) {
+    private userId: string;
+    private mode: 'sniper' | 'copyTrading' | 'both';
+    private isRunning: boolean = false;
+
+    constructor(options: BotOptions = {}) {
         this.userId = options.userId || 'default';
-        this.mode = options.mode || 'both'; // 'sniper', 'copyTrading', or 'both'
-        this.isRunning = false;
+        this.mode = options.mode || 'both';
     }
 
     /**
      * Start the bot
      */
-    async start() {
+    async start(): Promise<void> {
         try {
             console.log('🚀 Starting XRPL Trading Bot...');
             
-            // Connect to database
+            // Initialize storage
             await db.connect();
-            console.log('✅ Database connected');
+            console.log('✅ Storage initialized');
 
             // Connect to XRPL
             await getClient();
@@ -63,7 +66,7 @@ class XRPLTradingBot {
     /**
      * Stop the bot
      */
-    async stop() {
+    async stop(): Promise<void> {
         try {
             console.log('⏹️ Stopping bot...');
 
@@ -80,7 +83,7 @@ class XRPLTradingBot {
             // Disconnect from XRPL
             await disconnectXRPL();
 
-            // Disconnect from database
+            // Save state and disconnect
             await db.disconnect();
 
             this.isRunning = false;
@@ -94,16 +97,16 @@ class XRPLTradingBot {
     /**
      * Get bot status
      */
-    getStatus() {
+    getStatus(): BotStatus {
         return {
             isRunning: this.isRunning,
             mode: this.mode,
             userId: this.userId,
-            sniper: sniper.isRunning(),
-            copyTrading: copyTrading.isRunning()
+            sniper: sniper.isRunningSniper(),
+            copyTrading: copyTrading.isRunningCopyTrading()
         };
     }
 }
 
-module.exports = XRPLTradingBot;
+export default XRPLTradingBot;
 

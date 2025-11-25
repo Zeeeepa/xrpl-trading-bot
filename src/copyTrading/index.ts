@@ -1,23 +1,31 @@
-const { getClient } = require('../xrpl/client');
-const { getWallet } = require('../xrpl/wallet');
-const { User } = require('../database/models');
-const { checkTraderTransactions } = require('./monitor');
-const { 
+import { Client } from 'xrpl';
+import { getClient } from '../xrpl/client';
+import { getWallet } from '../xrpl/wallet';
+import { IUser } from '../database/models';
+import { User, UserModel } from '../database/user';
+import { checkTraderTransactions } from './monitor';
+import { 
     calculateCopyTradeAmount, 
     executeCopyBuyTrade, 
     executeCopySellTrade,
     isTokenBlacklisted,
     wasTransactionCopied
-} = require('./executor');
-const config = require('../config');
+} from './executor';
+import { TradeInfo } from '../types';
+import config from '../config';
 
-let copyTradingIntervals = new Map();
-let isRunning = false;
+let copyTradingIntervals = new Map<string, NodeJS.Timeout>();
+let isRunning: boolean = false;
+
+interface Result {
+    success: boolean;
+    error?: string;
+}
 
 /**
  * Start copy trading
  */
-async function startCopyTrading(userId) {
+export async function startCopyTrading(userId: string): Promise<Result> {
     try {
         const user = await User.findOne({ userId });
         if (!user) {
@@ -35,7 +43,8 @@ async function startCopyTrading(userId) {
 
         user.copyTraderActive = true;
         user.copyTradingStartTime = new Date();
-        await user.save();
+        const userModel = new UserModel(user);
+        await userModel.save();
 
         // Start monitoring interval
         const interval = setInterval(async () => {
@@ -51,14 +60,14 @@ async function startCopyTrading(userId) {
         return { success: true };
     } catch (error) {
         console.error('Error starting copy trading:', error);
-        return { success: false, error: error.message };
+        return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
     }
 }
 
 /**
  * Stop copy trading
  */
-async function stopCopyTrading(userId) {
+export async function stopCopyTrading(userId: string): Promise<Result> {
     try {
         const interval = copyTradingIntervals.get(userId);
         if (interval) {
@@ -69,7 +78,8 @@ async function stopCopyTrading(userId) {
         const user = await User.findOne({ userId });
         if (user) {
             user.copyTraderActive = false;
-            await user.save();
+            const userModel = new UserModel(user);
+            await userModel.save();
         }
 
         if (copyTradingIntervals.size === 0) {
@@ -80,14 +90,14 @@ async function stopCopyTrading(userId) {
         return { success: true };
     } catch (error) {
         console.error('Error stopping copy trading:', error);
-        return { success: false, error: error.message };
+        return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
     }
 }
 
 /**
  * Monitor traders for new transactions
  */
-async function monitorTraders(userId) {
+async function monitorTraders(userId: string): Promise<void> {
     try {
         const user = await User.findOne({ userId });
         if (!user || !user.copyTraderActive) {
@@ -111,14 +121,14 @@ async function monitorTraders(userId) {
             await checkAndCopyTrades(client, user, traderAddress);
         }
     } catch (error) {
-        console.error('Error monitoring traders:', error.message);
+        console.error('Error monitoring traders:', error instanceof Error ? error.message : 'Unknown error');
     }
 }
 
 /**
  * Check and copy trades from a trader
  */
-async function checkAndCopyTrades(client, user, traderAddress) {
+async function checkAndCopyTrades(client: Client, user: IUser, traderAddress: string): Promise<void> {
     try {
         const newTrades = await checkTraderTransactions(
             client,
@@ -155,14 +165,21 @@ async function checkAndCopyTrades(client, user, traderAddress) {
             await executeCopyTrade(client, user, traderAddress, tradeInfo, tradeAmount, txHash);
         }
     } catch (error) {
-        console.error(`Error checking trades for ${traderAddress}:`, error.message);
+        console.error(`Error checking trades for ${traderAddress}:`, error instanceof Error ? error.message : 'Unknown error');
     }
 }
 
 /**
  * Execute copy trade
  */
-async function executeCopyTrade(client, user, traderAddress, tradeInfo, tradeAmount, originalTxHash) {
+async function executeCopyTrade(
+    client: Client,
+    user: IUser,
+    traderAddress: string,
+    tradeInfo: TradeInfo,
+    tradeAmount: number,
+    originalTxHash: string
+): Promise<void> {
     try {
         const wallet = getWallet();
         let copyResult;
@@ -179,7 +196,7 @@ async function executeCopyTrade(client, user, traderAddress, tradeInfo, tradeAmo
             return;
         }
 
-        if (copyResult && copyResult.success) {
+        if (copyResult && copyResult.success && copyResult.txHash) {
             // Record transaction
             user.transactions.push({
                 type: `copy_${tradeInfo.type}`,
@@ -191,12 +208,15 @@ async function executeCopyTrade(client, user, traderAddress, tradeInfo, tradeAmo
                 timestamp: new Date(),
                 status: 'success',
                 traderAddress: traderAddress,
-                tokensReceived: copyResult.tokensReceived || 0,
+                tokensReceived: typeof copyResult.tokensReceived === 'number' 
+                    ? copyResult.tokensReceived 
+                    : parseFloat(String(copyResult.tokensReceived || 0)),
                 xrpSpent: copyResult.xrpSpent || tradeAmount,
                 actualRate: copyResult.actualRate || '0'
             });
 
-            await user.save();
+            const userModel = new UserModel(user);
+            await userModel.save();
 
             console.log(`✅ Copy trade successful!`);
             console.log(`   Trader: ${traderAddress.slice(0, 8)}...`);
@@ -212,9 +232,7 @@ async function executeCopyTrade(client, user, traderAddress, tradeInfo, tradeAmo
     }
 }
 
-module.exports = {
-    startCopyTrading,
-    stopCopyTrading,
-    isRunning: () => isRunning
-};
+export function isRunningCopyTrading(): boolean {
+    return isRunning;
+}
 

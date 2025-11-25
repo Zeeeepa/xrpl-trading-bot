@@ -1,10 +1,17 @@
-const { xrpToDrops } = require('xrpl');
-const { getReadableCurrency, formatTokenAmountSimple } = require('./utils');
+import { Client, Wallet, xrpToDrops } from 'xrpl';
+import { TokenInfo, TradeResult, LPBurnStatus } from '../types';
+import { getReadableCurrency, formatTokenAmountSimple } from './utils';
 
 /**
  * Execute AMM buy transaction
  */
-async function executeAMMBuy(client, wallet, tokenInfo, xrpAmount, slippage = 4.0) {
+export async function executeAMMBuy(
+    client: Client,
+    wallet: Wallet,
+    tokenInfo: TokenInfo,
+    xrpAmount: number,
+    slippage: number = 4.0
+): Promise<TradeResult> {
     try {
         // Check if trust line exists
         let hasTrustLine = false;
@@ -17,7 +24,7 @@ async function executeAMMBuy(client, wallet, tokenInfo, xrpAmount, slippage = 4.
                 ledger_index: 'validated'
             });
 
-            const existingLine = accountLines.result.lines.find(line =>
+            const existingLine = (accountLines.result as any).lines.find((line: any) =>
                 line.currency === tokenInfo.currency && line.account === tokenInfo.issuer
             );
 
@@ -45,10 +52,10 @@ async function executeAMMBuy(client, wallet, tokenInfo, xrpAmount, slippage = 4.
             const trustSigned = wallet.sign(trustPrepared);
             const trustResult = await client.submitAndWait(trustSigned.tx_blob);
 
-            if (trustResult.result.meta.TransactionResult !== 'tesSUCCESS') {
+            if ((trustResult.result.meta as any).TransactionResult !== 'tesSUCCESS') {
                 return {
                     success: false,
-                    error: `Failed to create trust line: ${trustResult.result.meta.TransactionResult}`
+                    error: `Failed to create trust line: ${(trustResult.result.meta as any).TransactionResult}`
                 };
             }
 
@@ -62,14 +69,14 @@ async function executeAMMBuy(client, wallet, tokenInfo, xrpAmount, slippage = 4.
             asset2: { currency: tokenInfo.currency, issuer: tokenInfo.issuer }
         });
 
-        if (!ammInfo.result || !ammInfo.result.amm) {
+        if (!ammInfo.result || !(ammInfo.result as any).amm) {
             return {
                 success: false,
                 error: 'AMM pool not found for this token pair'
             };
         }
 
-        const amm = ammInfo.result.amm;
+        const amm = (ammInfo.result as any).amm;
         const xrpAmountDrops = parseFloat(amm.amount);
         const tokenAmount = parseFloat(amm.amount2.value);
         const currentRate = tokenAmount / (xrpAmountDrops / 1000000);
@@ -95,7 +102,7 @@ async function executeAMMBuy(client, wallet, tokenInfo, xrpAmount, slippage = 4.
         const signed = wallet.sign(prepared);
         const result = await client.submitAndWait(signed.tx_blob);
 
-        if (result.result.meta.TransactionResult === 'tesSUCCESS') {
+        if ((result.result.meta as any).TransactionResult === 'tesSUCCESS') {
             await new Promise(resolve => setTimeout(resolve, 2000));
 
             // Get final balance
@@ -105,7 +112,7 @@ async function executeAMMBuy(client, wallet, tokenInfo, xrpAmount, slippage = 4.
                 ledger_index: 'validated'
             });
 
-            const tokenLine = finalBalance.result.lines.find(line =>
+            const tokenLine = (finalBalance.result as any).lines.find((line: any) =>
                 line.currency === tokenInfo.currency && line.account === tokenInfo.issuer
             );
 
@@ -127,13 +134,13 @@ async function executeAMMBuy(client, wallet, tokenInfo, xrpAmount, slippage = 4.
         } else {
             return {
                 success: false,
-                error: result.result.meta.TransactionResult
+                error: (result.result.meta as any).TransactionResult
             };
         }
     } catch (error) {
         return {
             success: false,
-            error: error.message
+            error: error instanceof Error ? error.message : 'Unknown error'
         };
     }
 }
@@ -141,7 +148,13 @@ async function executeAMMBuy(client, wallet, tokenInfo, xrpAmount, slippage = 4.
 /**
  * Execute AMM sell transaction
  */
-async function executeAMMSell(client, wallet, tokenInfo, tokenAmount, slippage = 4.0) {
+export async function executeAMMSell(
+    client: Client,
+    wallet: Wallet,
+    tokenInfo: TokenInfo,
+    tokenAmount: number,
+    slippage: number = 4.0
+): Promise<TradeResult> {
     try {
         // Check token balance
         let currentTokenBalance = 0;
@@ -153,7 +166,7 @@ async function executeAMMSell(client, wallet, tokenInfo, tokenAmount, slippage =
             ledger_index: 'validated'
         });
 
-        const existingLine = accountLines.result.lines.find(line =>
+        const existingLine = (accountLines.result as any).lines.find((line: any) =>
             line.currency === tokenInfo.currency && line.account === tokenInfo.issuer
         );
 
@@ -181,14 +194,14 @@ async function executeAMMSell(client, wallet, tokenInfo, tokenAmount, slippage =
             asset2: { currency: tokenInfo.currency, issuer: tokenInfo.issuer }
         });
 
-        if (!ammInfo.result || !ammInfo.result.amm) {
+        if (!ammInfo.result || !(ammInfo.result as any).amm) {
             return {
                 success: false,
                 error: `No AMM pool found for ${getReadableCurrency(tokenInfo.currency)}. Cannot sell via AMM.`
             };
         }
 
-        const amm = ammInfo.result.amm;
+        const amm = (ammInfo.result as any).amm;
         const xrpAmountDrops = parseFloat(amm.amount);
         const tokenAmountInPool = parseFloat(amm.amount2.value);
         const currentRate = (xrpAmountDrops / 1000000) / tokenAmountInPool;
@@ -217,7 +230,7 @@ async function executeAMMSell(client, wallet, tokenInfo, tokenAmount, slippage =
         const paymentSigned = wallet.sign(paymentPrepared);
         const paymentResult = await client.submitAndWait(paymentSigned.tx_blob);
 
-        if (paymentResult.result.meta.TransactionResult === 'tesSUCCESS') {
+        if ((paymentResult.result.meta as any).TransactionResult === 'tesSUCCESS') {
             await new Promise(resolve => setTimeout(resolve, 2000));
 
             // Get final balance
@@ -227,7 +240,7 @@ async function executeAMMSell(client, wallet, tokenInfo, tokenAmount, slippage =
                 ledger_index: 'validated'
             });
 
-            const tokenLine = finalTokenBalance.result.lines.find(line =>
+            const tokenLine = (finalTokenBalance.result as any).lines.find((line: any) =>
                 line.currency === tokenInfo.currency && line.account === tokenInfo.issuer
             );
 
@@ -252,13 +265,13 @@ async function executeAMMSell(client, wallet, tokenInfo, tokenAmount, slippage =
         } else {
             return {
                 success: false,
-                error: `AMM transaction failed: ${paymentResult.result.meta.TransactionResult}`
+                error: `AMM transaction failed: ${(paymentResult.result.meta as any).TransactionResult}`
             };
         }
     } catch (error) {
         return {
             success: false,
-            error: error.message || 'Failed to execute AMM sell transaction'
+            error: error instanceof Error ? error.message : 'Failed to execute AMM sell transaction'
         };
     }
 }
@@ -266,7 +279,7 @@ async function executeAMMSell(client, wallet, tokenInfo, tokenAmount, slippage =
 /**
  * Get AMM pool information
  */
-async function getAMMInfo(client, tokenInfo) {
+export async function getAMMInfo(client: Client, tokenInfo: TokenInfo): Promise<any | null> {
     try {
         const ammInfo = await client.request({
             command: 'amm_info',
@@ -274,11 +287,11 @@ async function getAMMInfo(client, tokenInfo) {
             asset2: { currency: tokenInfo.currency, issuer: tokenInfo.issuer }
         });
 
-        if (!ammInfo.result || !ammInfo.result.amm) {
+        if (!ammInfo.result || !(ammInfo.result as any).amm) {
             return null;
         }
 
-        return ammInfo.result.amm;
+        return (ammInfo.result as any).amm;
     } catch (error) {
         return null;
     }
@@ -287,7 +300,7 @@ async function getAMMInfo(client, tokenInfo) {
 /**
  * Check LP burn status
  */
-async function checkLPBurnStatus(client, tokenInfo) {
+export async function checkLPBurnStatus(client: Client, tokenInfo: TokenInfo): Promise<LPBurnStatus> {
     try {
         const ammInfo = await getAMMInfo(client, tokenInfo);
         if (!ammInfo) {
@@ -306,7 +319,7 @@ async function checkLPBurnStatus(client, tokenInfo) {
             ledger_index: 'validated'
         });
 
-        if (!accountLines.result || !accountLines.result.lines) {
+        if (!(accountLines.result as any) || !(accountLines.result as any).lines) {
             return {
                 lpBurned: true,
                 lpBalance: '0',
@@ -314,7 +327,7 @@ async function checkLPBurnStatus(client, tokenInfo) {
             };
         }
 
-        const lpTokenLine = accountLines.result.lines.find(line => 
+        const lpTokenLine = (accountLines.result as any).lines.find((line: any) => 
             line.account === ammAccount && 
             line.currency && 
             line.currency.length === 40
@@ -341,15 +354,8 @@ async function checkLPBurnStatus(client, tokenInfo) {
         return {
             lpBurned: false,
             lpBalance: 'Error',
-            error: error.message
+            error: error instanceof Error ? error.message : 'Unknown error'
         };
     }
 }
-
-module.exports = {
-    executeAMMBuy,
-    executeAMMSell,
-    getAMMInfo,
-    checkLPBurnStatus
-};
 

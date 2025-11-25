@@ -1,11 +1,24 @@
-const { executeAMMBuy, executeAMMSell } = require('../xrpl/amm');
-const { getReadableCurrency } = require('../xrpl/utils');
-const config = require('../config');
+import { Client, Wallet } from 'xrpl';
+import { executeAMMBuy, executeAMMSell } from '../xrpl/amm';
+import { IUser } from '../database/models';
+import { TradeInfo } from '../types';
+import config from '../config';
+
+interface CopyTradeResult {
+    success: boolean;
+    txHash?: string;
+    tokensReceived?: number | string;
+    actualRate?: string;
+    xrpSpent?: number;
+    xrpReceived?: string;
+    tokensSold?: string;
+    error?: string;
+}
 
 /**
  * Calculate copy trade amount based on user settings
  */
-function calculateCopyTradeAmount(user, tradeInfo) {
+export function calculateCopyTradeAmount(user: IUser, tradeInfo: TradeInfo): number {
     try {
         const mode = user.selectedTradingAmountMode;
 
@@ -41,7 +54,13 @@ function calculateCopyTradeAmount(user, tradeInfo) {
 /**
  * Execute copy buy trade
  */
-async function executeCopyBuyTrade(client, wallet, user, tradeInfo, xrpAmount) {
+export async function executeCopyBuyTrade(
+    client: Client,
+    wallet: Wallet,
+    user: IUser,
+    tradeInfo: TradeInfo,
+    xrpAmount: number
+): Promise<CopyTradeResult> {
     try {
         const tokenInfo = {
             currency: tradeInfo.currency,
@@ -76,7 +95,7 @@ async function executeCopyBuyTrade(client, wallet, user, tradeInfo, xrpAmount) {
         console.error('Error executing copy buy trade:', error);
         return {
             success: false,
-            error: error.message || 'Copy buy execution failed'
+            error: error instanceof Error ? error.message : 'Copy buy execution failed'
         };
     }
 }
@@ -84,7 +103,13 @@ async function executeCopyBuyTrade(client, wallet, user, tradeInfo, xrpAmount) {
 /**
  * Execute copy sell trade
  */
-async function executeCopySellTrade(client, wallet, user, tradeInfo, tokenAmount) {
+export async function executeCopySellTrade(
+    client: Client,
+    wallet: Wallet,
+    user: IUser,
+    tradeInfo: TradeInfo,
+    tokenAmount: number
+): Promise<CopyTradeResult> {
     try {
         const tokenInfo = {
             currency: tradeInfo.currency,
@@ -119,7 +144,7 @@ async function executeCopySellTrade(client, wallet, user, tradeInfo, tokenAmount
         console.error('Error executing copy sell trade:', error);
         return {
             success: false,
-            error: error.message || 'Copy sell execution failed'
+            error: error instanceof Error ? error.message : 'Copy sell execution failed'
         };
     }
 }
@@ -127,7 +152,11 @@ async function executeCopySellTrade(client, wallet, user, tradeInfo, tokenAmount
 /**
  * Check if token is blacklisted
  */
-function isTokenBlacklisted(blackListedTokens, currency, issuer) {
+export function isTokenBlacklisted(
+    blackListedTokens: any[] | undefined,
+    currency: string,
+    issuer: string
+): boolean {
     if (!blackListedTokens || blackListedTokens.length === 0) {
         return false;
     }
@@ -140,15 +169,7 @@ function isTokenBlacklisted(blackListedTokens, currency, issuer) {
 /**
  * Check if transaction was already copied
  */
-function wasTransactionCopied(transactions, originalTxHash) {
+export function wasTransactionCopied(transactions: any[], originalTxHash: string): boolean {
     return transactions.some(t => t.originalTxHash === originalTxHash);
 }
-
-module.exports = {
-    calculateCopyTradeAmount,
-    executeCopyBuyTrade,
-    executeCopySellTrade,
-    isTokenBlacklisted,
-    wasTransactionCopied
-};
 

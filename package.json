@@ -2,13 +2,15 @@
   "name": "xrpl-trading-bot",
   "version": "2.0.0",
   "description": "Modular XRPL trading bot with sniper and copy trading capabilities",
-  "main": "index.js",
+  "main": "dist/index.js",
   "scripts": {
-    "start": "node index.js",
-    "start:sniper": "node index.js --sniper",
-    "start:copy": "node index.js --copy",
-    "start:both": "node index.js",
-    "dev": "nodemon index.js"
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "start:sniper": "node dist/index.js --sniper",
+    "start:copy": "node dist/index.js --copy",
+    "start:both": "node dist/index.js",
+    "dev": "ts-node index.ts",
+    "dev:watch": "nodemon --exec ts-node index.ts"
   },
   "keywords": [
     "xrpl",
@@ -28,14 +30,17 @@
     "cryptojs": "^2.5.3",
     "dotenv": "^16.5.0",
     "express": "^5.1.0",
-    "mongoose": "^8.15.1",
     "node-cron": "^4.0.7",
     "uuid": "^11.1.0",
     "xrpl": "^4.2.5",
     "ws": "^8.18.0"
   },
   "devDependencies": {
-    "nodemon": "^3.1.10"
+    "@types/node": "^20.10.0",
+    "@types/ws": "^8.5.10",
+    "nodemon": "^3.1.10",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.3.3"
   },
   "engines": {
     "node": ">=16.0.0"

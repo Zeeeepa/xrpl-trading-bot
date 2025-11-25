@@ -1,31 +1,62 @@
 // XRPL AMM Transaction Checker
 // This script connects to XRPL mainnet and checks for AMMCreate transactions
 
-const WebSocket = require('ws');
-const testAccount = 'rwpNZgUHJfXP8pjoCps53YM8fW3X1JFU1c'; 
+import WebSocket from 'ws';
 
-class XRPLAMMChecker {
-    constructor() {
-        this.ws = null;
-        this.requestId = 1;
-        this.pendingRequests = new Map();
-    }
+const testAccount = 'rwpNZgUHJfXP8pjoCps53YM8fW3X1JFU1c';
+const DEFAULT_XRPL_SERVER = 'wss://xrplcluster.com';
+
+interface PendingRequest {
+    resolve: (value: any) => void;
+    reject: (error: Error) => void;
+}
+
+interface AMMTransactionResult {
+    totalTransactions: number;
+    ammCreateTransactions: any[];
+    allTransactions: any[];
+    accountSequence?: number;
+    ledgerRange: {
+        min: number;
+        max: number;
+    };
+}
+
+interface AMMAnalysis {
+    hash: string;
+    creator: string;
+    ammAccount: string;
+    asset1: string;
+    asset2: string;
+    asset2Issuer: string;
+    tradingFee: number;
+    amount1: any;
+    amount2: any;
+    date: string;
+    ledgerIndex: number;
+    pairKey: string;
+}
+
+export default class XRPLAMMChecker {
+    private ws: WebSocket | null = null;
+    private requestId: number = 1;
+    private pendingRequests: Map<number, PendingRequest> = new Map();
 
     // Connect to XRPL mainnet WebSocket
-    connect() {
+    connect(serverUrl: string = DEFAULT_XRPL_SERVER): Promise<void> {
         return new Promise((resolve, reject) => {
-            this.ws = new WebSocket('wss://xrplcluster.com');
+            this.ws = new WebSocket(serverUrl);
             
             this.ws.on('open', () => {
                 console.log('✅ Connected to XRPL mainnet');
                 resolve();
             });
 
-            this.ws.on('message', (data) => {
+            this.ws.on('message', (data: WebSocket.Data) => {
                 this.handleMessage(JSON.parse(data.toString()));
             });
 
-            this.ws.on('error', (error) => {
+            this.ws.on('error', (error: Error) => {
                 console.error('❌ WebSocket error:', error);
                 reject(error);
             });
@@ -37,9 +68,9 @@ class XRPLAMMChecker {
     }
 
     // Handle incoming WebSocket messages
-    handleMessage(message) {
+    private handleMessage(message: any): void {
         if (message.id && this.pendingRequests.has(message.id)) {
-            const { resolve, reject } = this.pendingRequests.get(message.id);
+            const { resolve, reject } = this.pendingRequests.get(message.id)!;
             this.pendingRequests.delete(message.id);
 
             if (message.status === 'success') {
@@ -51,8 +82,13 @@ class XRPLAMMChecker {
     }
 
     // Send request to XRPL
-    request(command) {
+    request(command: any): Promise<any> {
         return new Promise((resolve, reject) => {
+            if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
+                reject(new Error('WebSocket not connected'));
+                return;
+            }
+
             const id = this.requestId++;
             const request = { id, ...command };
             
@@ -70,7 +106,7 @@ class XRPLAMMChecker {
     }
 
     // Get account transactions and filter for AMMCreate
-    async getAccountAMMTransactions(accountAddress, limit = 1000) {
+    async getAccountAMMTransactions(accountAddress: string, limit: number = 1000): Promise<AMMTransactionResult> {
         try {
             console.log(`🔍 Searching transactions for account: ${accountAddress}`);
             
@@ -87,15 +123,15 @@ class XRPLAMMChecker {
 
             // Show all transaction types found
             if (response.transactions && response.transactions.length > 0) {
-                const transactionTypes = new Set();
-                response.transactions.forEach(tx => {
+                const transactionTypes = new Set<string>();
+                response.transactions.forEach((tx: any) => {
                     const txType = tx.tx?.TransactionType || 'Unknown';
                     transactionTypes.add(txType);
                 });
                 
                 console.log(`📋 Transaction types found:`);
                 Array.from(transactionTypes).sort().forEach(type => {
-                    const count = response.transactions.filter(tx => tx.tx?.TransactionType === type).length;
+                    const count = response.transactions.filter((tx: any) => tx.tx?.TransactionType === type).length;
                     console.log(`   - ${type}: ${count} transactions`);
                 });
             } else {
@@ -103,7 +139,7 @@ class XRPLAMMChecker {
             }
 
             // Filter for AMMCreate transactions
-            const ammCreateTxs = response.transactions ? response.transactions.filter(tx => 
+            const ammCreateTxs = response.transactions ? response.transactions.filter((tx: any) => 
                 tx.tx?.TransactionType === 'AMMCreate'
             ) : [];
 
@@ -121,13 +157,13 @@ class XRPLAMMChecker {
             };
 
         } catch (error) {
-            console.error('❌ Error fetching account transactions:', error.message);
+            console.error('❌ Error fetching account transactions:', error instanceof Error ? error.message : 'Unknown error');
             throw error;
         }
     }
 
     // Analyze AMMCreate transaction details
-    analyzeAMMCreate(tx) {
+    analyzeAMMCreate(tx: any): AMMAnalysis {
         const txData = tx.tx;
         const meta = tx.meta;
         
@@ -159,7 +195,7 @@ class XRPLAMMChecker {
     }
 
     // Check if this token pair is new (first AMM creation)
-    async checkIfNewTokenLaunch(accountAddress) {
+    async checkIfNewTokenLaunch(accountAddress: string): Promise<{ isNewCreator: boolean; ammHistory: any[] }> {
         try {
             const result = await this.getAccountAMMTransactions(accountAddress);
             const ammTransactions = result.ammCreateTransactions;
@@ -167,19 +203,19 @@ class XRPLAMMChecker {
             if (ammTransactions.length === 0) {
                 console.log('✨ This account has never created any AMM pools');
                 return { isNewCreator: true, ammHistory: [] };
-            }else if(ammTransactions.length === 1) {
-                return {isNewCreator: true, ammHistory: [ammTransactions[0]]};
-            }else {
-                return {isNewCreator: false, ammHistory: ammTransactions};
+            } else if (ammTransactions.length === 1) {
+                return { isNewCreator: true, ammHistory: [ammTransactions[0]] };
+            } else {
+                return { isNewCreator: false, ammHistory: ammTransactions };
             }
         } catch (error) {
-            console.error('❌ Error checking token launch status:', error.message);
+            console.error('❌ Error checking token launch status:', error instanceof Error ? error.message : 'Unknown error');
             throw error;
         }
     }
 
     // Close WebSocket connection
-    close() {
+    close(): void {
         if (this.ws) {
             this.ws.close();
         }
@@ -187,7 +223,7 @@ class XRPLAMMChecker {
 }
 
 // Test function
-async function testAMMChecker() {
+async function testAMMChecker(): Promise<void> {
     const checker = new XRPLAMMChecker();
     
     try {
@@ -218,15 +254,12 @@ async function testAMMChecker() {
         }
         
     } catch (error) {
-        console.error('❌ Test failed:', error.message);
+        console.error('❌ Test failed:', error instanceof Error ? error.message : 'Unknown error');
     } finally {
         // Close connection
         checker.close();
     }
 }
-
-// Export for use in other files
-module.exports = XRPLAMMChecker;
 
 // Run test if this file is executed directly
 if (require.main === module) {
