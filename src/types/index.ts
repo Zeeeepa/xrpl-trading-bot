@@ -1,5 +1,3 @@
-import { Client } from 'xrpl';
-import { Wallet } from 'xrpl';
 
 export interface Config {
     xrpl: {
@@ -118,7 +116,7 @@ export interface WalletInfo {
     publicKey: string;
     privateKey: string;
     walletAddress: string;
-    seed: string;
+    seed: string | undefined;
 }
 
 export interface TokenBalance {

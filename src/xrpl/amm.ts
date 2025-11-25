@@ -39,7 +39,7 @@ export async function executeAMMBuy(
         // Create trust line if needed
         if (!hasTrustLine) {
             const trustSetTx = {
-                TransactionType: 'TrustSet',
+                TransactionType: 'TrustSet' as const,
                 Account: wallet.address,
                 LimitAmount: {
                     currency: tokenInfo.currency,
@@ -87,7 +87,7 @@ export async function executeAMMBuy(
 
         // Execute buy transaction
         const paymentTx = {
-            TransactionType: 'Payment',
+            TransactionType: 'Payment' as const,
             Account: wallet.address,
             Destination: wallet.address,
             Amount: {
@@ -158,7 +158,6 @@ export async function executeAMMSell(
     try {
         // Check token balance
         let currentTokenBalance = 0;
-        let hasTrustLine = false;
 
         const accountLines = await client.request({
             command: 'account_lines',
@@ -177,7 +176,6 @@ export async function executeAMMSell(
             };
         }
 
-        hasTrustLine = true;
         currentTokenBalance = parseFloat(existingLine.balance);
 
         if (currentTokenBalance < tokenAmount) {
@@ -213,7 +211,7 @@ export async function executeAMMSell(
 
         // Execute sell transaction
         const paymentTx = {
-            TransactionType: 'Payment',
+            TransactionType: 'Payment' as const,
             Account: wallet.address,
             Destination: wallet.address,
             Amount: xrpToDrops(formattedMinXrp.toString()),

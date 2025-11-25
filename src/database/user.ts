@@ -1,5 +1,5 @@
 import { IUser, createDefaultUser } from './models';
-import { getUser, saveUser, userExists } from './storage';
+import { getUser, saveUser } from './storage';
 
 /**
  * Find user by ID (MongoDB-like interface)

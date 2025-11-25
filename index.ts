@@ -24,7 +24,7 @@ process.on('uncaughtException', (error) => {
     bot.stop().finally(() => process.exit(1));
 });
 
-process.on('unhandledRejection', (reason, promise) => {
+process.on('unhandledRejection', (reason) => {
     console.error('Unhandled rejection:', reason);
     bot.stop().finally(() => process.exit(1));
 });
