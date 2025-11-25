@@ -13,7 +13,6 @@ export async function connect(): Promise<void> {
     try {
         initialize();
         isInitialized = true;
-        console.log('✅ Storage initialized');
     } catch (error) {
         console.error('❌ Storage initialization error:', error);
         throw error;
@@ -28,7 +27,6 @@ export async function disconnect(): Promise<void> {
         const { saveState } = require('./storage');
         saveState();
         isInitialized = false;
-        console.log('🔌 Storage disconnected (state saved)');
     }
 }
 

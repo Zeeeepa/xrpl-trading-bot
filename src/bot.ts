@@ -19,39 +19,28 @@ class XRPLTradingBot {
      */
     async start(): Promise<void> {
         try {
-            console.log('🚀 Starting XRPL Trading Bot...');
-            
             // Initialize storage
             await db.connect();
-            console.log('✅ Storage initialized');
 
             // Connect to XRPL
             await getClient();
-            console.log('✅ XRPL client connected');
 
             // Start services based on mode
             if (this.mode === 'sniper' || this.mode === 'both') {
                 const sniperResult = await sniper.startSniper(this.userId);
-                if (sniperResult.success) {
-                    console.log('✅ Sniper started');
-                } else {
-                    console.error('❌ Failed to start sniper:', sniperResult.error);
+                if (!sniperResult.success) {
+                    console.error('Failed to start sniper:', sniperResult.error);
                 }
             }
 
             if (this.mode === 'copyTrading' || this.mode === 'both') {
                 const copyResult = await copyTrading.startCopyTrading(this.userId);
-                if (copyResult.success) {
-                    console.log('✅ Copy trading started');
-                } else {
-                    console.error('❌ Failed to start copy trading:', copyResult.error);
+                if (!copyResult.success) {
+                    console.error('Failed to start copy trading:', copyResult.error);
                 }
             }
 
             this.isRunning = true;
-            console.log('✅ Bot is running!');
-            console.log(`   Mode: ${this.mode}`);
-            console.log(`   User ID: ${this.userId}`);
 
             // Handle graceful shutdown
             process.on('SIGINT', () => this.stop());
@@ -68,8 +57,6 @@ class XRPLTradingBot {
      */
     async stop(): Promise<void> {
         try {
-            console.log('⏹️ Stopping bot...');
-
             // Stop sniper
             if (this.mode === 'sniper' || this.mode === 'both') {
                 await sniper.stopSniper(this.userId);
@@ -87,7 +74,6 @@ class XRPLTradingBot {
             await db.disconnect();
 
             this.isRunning = false;
-            console.log('✅ Bot stopped');
         } catch (error) {
             console.error('❌ Error stopping bot:', error);
             throw error;

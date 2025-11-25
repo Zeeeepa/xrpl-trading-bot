@@ -21,7 +21,6 @@ interface Result {
  */
 export async function startSniper(userId: string): Promise<Result> {
     if (isRunning) {
-        console.log('⚠️ Sniper is already running');
         return { success: false, error: 'Sniper is already running' };
     }
 
@@ -64,7 +63,6 @@ export async function startSniper(userId: string): Promise<Result> {
             await monitorTokenMarkets(userId);
         }, config.sniper.checkInterval);
 
-        console.log(`✅ Sniper started for user ${userId}`);
         return { success: true };
     } catch (error) {
         console.error('Error starting sniper:', error);
@@ -90,7 +88,6 @@ export async function stopSniper(userId: string): Promise<Result> {
         }
 
         isRunning = false;
-        console.log(`⏹️ Sniper stopped for user ${userId}`);
         return { success: true };
     } catch (error) {
         console.error('Error stopping sniper:', error);
@@ -135,11 +132,8 @@ async function evaluateAndSnipeToken(client: any, user: IUser, tokenInfo: TokenI
         const evaluation = await evaluateToken(client, user, tokenInfo);
 
         if (!evaluation.shouldSnipe) {
-            console.log(`⏭️ Skipping ${tokenInfo.readableCurrency || tokenInfo.currency}: ${evaluation.reasons.join(', ')}`);
             return;
         }
-
-        console.log(`✅ All checks passed for ${tokenInfo.readableCurrency || tokenInfo.currency}, executing snipe...`);
 
         // Execute snipe
         await executeSnipe(client, user, tokenInfo);
@@ -193,7 +187,6 @@ async function executeSnipe(client: any, user: IUser, tokenInfo: TokenInfo): Pro
 
         // Check blacklist
         if (isTokenBlacklisted(user.blackListedTokens, tokenInfo.currency, tokenInfo.issuer)) {
-            console.log(`🚫 Token ${tokenInfo.readableCurrency || tokenInfo.currency} is blacklisted`);
             return;
         }
 
@@ -240,13 +233,8 @@ async function executeSnipe(client: any, user: IUser, tokenInfo: TokenInfo): Pro
 
             const userModel = new UserModel(user);
             await userModel.save();
-
-            console.log(`🎯 Snipe successful! ${tokenInfo.readableCurrency || tokenInfo.currency}`);
-            console.log(`   TX: ${buyResult.txHash}`);
-            console.log(`   Tokens: ${buyResult.tokensReceived}`);
-            console.log(`   Rate: ${buyResult.actualRate || 'N/A'} tokens/XRP`);
         } else {
-            console.error(`❌ Snipe failed: ${buyResult.error || 'Unknown error'}`);
+            console.error(`Snipe failed: ${buyResult.error || 'Unknown error'}`);
         }
     } catch (error) {
         console.error('Error executing snipe:', error);

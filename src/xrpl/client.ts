@@ -19,17 +19,14 @@ export async function getClient(): Promise<Client> {
         await persistentClient.connect();
         
         persistentClient.on('disconnected', async () => {
-            console.log('⚠️ XRPL client disconnected, attempting reconnect...');
             try {
                 await persistentClient!.connect();
-                console.log('✅ XRPL client reconnected');
             } catch (error) {
-                console.error('❌ XRPL client reconnect failed:', error);
+                console.error('XRPL client reconnect failed:', error);
             }
         });
 
         connectingPromise = null;
-        console.log('✅ Connected to XRPL');
     })();
 
     await connectingPromise;
@@ -40,7 +37,6 @@ export async function disconnect(): Promise<void> {
     if (persistentClient && persistentClient.isConnected()) {
         await persistentClient.disconnect();
         persistentClient = null;
-        console.log('🔌 Disconnected from XRPL');
     }
 }
 

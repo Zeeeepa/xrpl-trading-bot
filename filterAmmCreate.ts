@@ -48,7 +48,6 @@ export default class XRPLAMMChecker {
             this.ws = new WebSocket(serverUrl);
             
             this.ws.on('open', () => {
-                console.log('✅ Connected to XRPL mainnet');
                 resolve();
             });
 
@@ -57,12 +56,12 @@ export default class XRPLAMMChecker {
             });
 
             this.ws.on('error', (error: Error) => {
-                console.error('❌ WebSocket error:', error);
+                console.error('WebSocket error:', error);
                 reject(error);
             });
 
             this.ws.on('close', () => {
-                console.log('🔌 WebSocket connection closed');
+                // Connection closed
             });
         });
     }
@@ -108,8 +107,6 @@ export default class XRPLAMMChecker {
     // Get account transactions and filter for AMMCreate
     async getAccountAMMTransactions(accountAddress: string, limit: number = 1000): Promise<AMMTransactionResult> {
         try {
-            console.log(`🔍 Searching transactions for account: ${accountAddress}`);
-            
             const response = await this.request({
                 command: 'account_tx',
                 account: accountAddress,
@@ -119,31 +116,10 @@ export default class XRPLAMMChecker {
                 forward: true
             });
 
-            console.log(`📊 Total transactions found: ${response.transactions ? response.transactions.length : 0}`);
-
-            // Show all transaction types found
-            if (response.transactions && response.transactions.length > 0) {
-                const transactionTypes = new Set<string>();
-                response.transactions.forEach((tx: any) => {
-                    const txType = tx.tx?.TransactionType || 'Unknown';
-                    transactionTypes.add(txType);
-                });
-                
-                console.log(`📋 Transaction types found:`);
-                Array.from(transactionTypes).sort().forEach(type => {
-                    const count = response.transactions.filter((tx: any) => tx.tx?.TransactionType === type).length;
-                    console.log(`   - ${type}: ${count} transactions`);
-                });
-            } else {
-                console.log(`📋 No transactions found for this account`);
-            }
-
             // Filter for AMMCreate transactions
             const ammCreateTxs = response.transactions ? response.transactions.filter((tx: any) => 
                 tx.tx?.TransactionType === 'AMMCreate'
             ) : [];
-
-            console.log(`🏊 AMMCreate transactions found: ${ammCreateTxs.length}`);
 
             return {
                 totalTransactions: response.transactions ? response.transactions.length : 0,
@@ -157,7 +133,7 @@ export default class XRPLAMMChecker {
             };
 
         } catch (error) {
-            console.error('❌ Error fetching account transactions:', error instanceof Error ? error.message : 'Unknown error');
+            console.error('Error fetching account transactions:', error instanceof Error ? error.message : 'Unknown error');
             throw error;
         }
     }
@@ -201,7 +177,6 @@ export default class XRPLAMMChecker {
             const ammTransactions = result.ammCreateTransactions;
 
             if (ammTransactions.length === 0) {
-                console.log('✨ This account has never created any AMM pools');
                 return { isNewCreator: true, ammHistory: [] };
             } else if (ammTransactions.length === 1) {
                 return { isNewCreator: true, ammHistory: [ammTransactions[0]] };
@@ -209,7 +184,7 @@ export default class XRPLAMMChecker {
                 return { isNewCreator: false, ammHistory: ammTransactions };
             }
         } catch (error) {
-            console.error('❌ Error checking token launch status:', error instanceof Error ? error.message : 'Unknown error');
+            console.error('Error checking token launch status:', error instanceof Error ? error.message : 'Unknown error');
             throw error;
         }
     }
@@ -222,48 +197,23 @@ export default class XRPLAMMChecker {
     }
 }
 
-// Test function
+// Test function (only runs when executed directly)
 async function testAMMChecker(): Promise<void> {
     const checker = new XRPLAMMChecker();
     
     try {
         await checker.connect();
-        
-        console.log('\n🚀 Starting AMM transaction analysis...\n');
-        
-        const result = await checker.getAccountAMMTransactions(testAccount);
-        
-        console.log('\n📊 Summary:');
-        console.log(`Account: ${testAccount}`);
-        console.log(`Total transactions: ${result.totalTransactions}`);
-        console.log(`AMMCreate transactions: ${result.ammCreateTransactions.length}`);
-        
-        if (result.totalTransactions === 0) {
-            console.log('✨ This account has no transaction history');
-        } else if (result.ammCreateTransactions.length === 0) {
-            console.log('✨ This account has never created any AMM pools');
-        } else {
-            console.log('\n🔍 AMM pools created:');
-            result.ammCreateTransactions.forEach((amm, index) => {
-                const analysis = checker.analyzeAMMCreate(amm);
-                console.log(`   ${index + 1}. ${analysis.pairKey}`);
-                console.log(`      AMM Account: ${analysis.ammAccount}`);
-                console.log(`      Date: ${analysis.date}`);
-                console.log(`      Hash: ${analysis.hash}`);
-            });
-        }
-        
+        await checker.getAccountAMMTransactions(testAccount);
+        // Test completed silently
     } catch (error) {
-        console.error('❌ Test failed:', error instanceof Error ? error.message : 'Unknown error');
+        console.error('Test failed:', error instanceof Error ? error.message : 'Unknown error');
     } finally {
-        // Close connection
         checker.close();
     }
 }
 
 // Run test if this file is executed directly
 if (require.main === module) {
-    console.log('🔥 XRPL AMM Transaction Checker Started\n');
     testAMMChecker();
 }
 

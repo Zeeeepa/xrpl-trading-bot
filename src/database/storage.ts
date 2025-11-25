@@ -53,9 +53,7 @@ export function loadState(): void {
                     }))
                 }]));
             }
-            console.log(`✅ Loaded ${users.size} user(s) from state file`);
         } else {
-            console.log('📝 No existing state file, starting fresh');
             saveState(); // Create empty state file
         }
     } catch (error) {

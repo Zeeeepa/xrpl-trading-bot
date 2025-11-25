@@ -54,9 +54,6 @@ export async function startCopyTrading(userId: string): Promise<Result> {
         copyTradingIntervals.set(userId, interval);
         isRunning = true;
 
-        console.log(`✅ Copy trading started for user ${userId}`);
-        console.log(`   Monitoring ${user.copyTradersAddresses.length} trader(s)`);
-        
         return { success: true };
     } catch (error) {
         console.error('Error starting copy trading:', error);
@@ -86,7 +83,6 @@ export async function stopCopyTrading(userId: string): Promise<Result> {
             isRunning = false;
         }
 
-        console.log(`⏹️ Copy trading stopped for user ${userId}`);
         return { success: true };
     } catch (error) {
         console.error('Error stopping copy trading:', error);
@@ -150,14 +146,12 @@ async function checkAndCopyTrades(client: Client, user: IUser, traderAddress: st
                 tradeInfo.currency,
                 tradeInfo.issuer
             )) {
-                console.log(`🚫 Skipping blacklisted token: ${tradeInfo.readableCurrency}`);
                 continue;
             }
 
             // Calculate copy trade amount
             const tradeAmount = calculateCopyTradeAmount(user, tradeInfo);
             if (!tradeAmount || tradeAmount <= 0) {
-                console.log(`⏭️ Skipping trade: calculated amount is ${tradeAmount}`);
                 continue;
             }
 
@@ -192,7 +186,6 @@ async function executeCopyTrade(
             const tokenAmount = tradeAmount; // Simplified
             copyResult = await executeCopySellTrade(client, wallet, user, tradeInfo, tokenAmount);
         } else {
-            console.log(`⏭️ Unknown trade type: ${tradeInfo.type}`);
             return;
         }
 
@@ -217,15 +210,8 @@ async function executeCopyTrade(
 
             const userModel = new UserModel(user);
             await userModel.save();
-
-            console.log(`✅ Copy trade successful!`);
-            console.log(`   Trader: ${traderAddress.slice(0, 8)}...`);
-            console.log(`   Token: ${tradeInfo.readableCurrency}`);
-            console.log(`   Type: ${tradeInfo.type.toUpperCase()}`);
-            console.log(`   Amount: ${tradeAmount} XRP`);
-            console.log(`   TX: ${copyResult.txHash}`);
         } else {
-            console.error(`❌ Copy trade failed: ${copyResult?.error || 'Unknown error'}`);
+            console.error(`Copy trade failed: ${copyResult?.error || 'Unknown error'}`);
         }
     } catch (error) {
         console.error('Error executing copy trade:', error);
