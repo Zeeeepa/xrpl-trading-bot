@@ -1,5 +1,3 @@
-#!/usr/bin/env node
-
 import XRPLTradingBot from './src/bot';
 
 const args = process.argv.slice(2);

